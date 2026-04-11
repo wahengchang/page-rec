@@ -87,20 +87,6 @@ page-rec delete <name>
 
 Removes the named recording from `recorder-scripts.json`. Exits with code 1 if the name is not found.
 
-## Chrome extension setup
-
-page-rec requires the **Behaviour Recorder** Chrome extension loaded as an unpacked extension.
-
-1. Open `chrome://extensions`
-2. Enable **Developer mode**
-3. Click **Load unpacked** and select the `extension/` folder from this repo
-4. Pin the extension to the toolbar (optional but recommended)
-
-**Notes:**
-- Chrome 114 or later is required (Side Panel API).
-- The extension only activates on tabs where `page-rec start` has opened the URL — it detects the `__rec=PORT` hash fragment automatically.
-- Only one recording session can be active at a time.
-
 ## Installing the Chrome extension
 
 ### For end users (from a release zip)
@@ -112,6 +98,11 @@ page-rec requires the **Behaviour Recorder** Chrome extension loaded as an unpac
 5. Click **Load unpacked** and select the `page-rec-extension/` folder.
 
 **Requirements:** Google Chrome 114 or later (required for the Side Panel API).
+
+**Notes:**
+- The extension only activates on tabs where `page-rec start` has opened the URL — it detects the `__rec=PORT` hash fragment automatically.
+- Only one recording session can be active at a time.
+- For a repo checkout, load the `extension/` folder directly via **Load unpacked** instead of downloading a zip.
 
 ### For maintainers (building the release zip)
 

@@ -1,0 +1,394 @@
+/* D-02: Clean minimal CSS, dark-on-light, no framework */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 13px;
+  background: #ffffff;
+  color: #1a1a1a;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* Header */
+#header {
+  padding: 10px 12px;
+  border-bottom: 1px solid #e0e0e0;
+  background: #fafafa;
+  flex-shrink: 0;
+}
+
+#status-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* D-03: Status indicator dots */
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+.dot-green { background: #22c55e; }
+.dot-red   { background: #ef4444; }
+
+#status-text {
+  font-weight: 600;
+  font-size: 12px;
+}
+
+#action-count {
+  color: #6b7280;
+  font-size: 11px;
+  margin-left: auto;
+}
+
+/* Tab bar */
+#tabs {
+  display: flex;
+  border-bottom: 1px solid #e0e0e0;
+  background: #fafafa;
+  flex-shrink: 0;
+}
+#tabs.hidden { display: none; }
+
+.tab {
+  flex: 1;
+  padding: 7px 0;
+  border: none;
+  background: none;
+  font-size: 12px;
+  font-weight: 500;
+  color: #6b7280;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: color 0.15s, border-color 0.15s;
+}
+.tab:hover { color: #374151; }
+.tab.active {
+  color: #1d4ed8;
+  border-bottom-color: #1d4ed8;
+  font-weight: 600;
+}
+
+/* Tab content */
+.tab-content {
+  display: none;
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 0;
+}
+.tab-content.active { display: block; }
+
+#action-list {
+  list-style: none;
+}
+
+/* Steps toolbar */
+#steps-toolbar {
+  display: flex;
+  gap: 6px;
+  padding: 6px 12px;
+  border-bottom: 1px solid #e0e0e0;
+  background: #fafafa;
+}
+
+#steps-toolbar button {
+  padding: 4px 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  background: #fff;
+  font-size: 11px;
+  color: #374151;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+#steps-toolbar button:hover { background: #f3f4f6; }
+
+/* Steps tab */
+#steps-list {
+  list-style: none;
+  padding: 0;
+}
+
+/* Insert zone between items — visible hover target */
+.step-insert-zone {
+  height: 12px;
+  position: relative;
+  cursor: pointer;
+  transition: height 0.15s;
+}
+.step-insert-zone:hover {
+  height: 28px;
+}
+.step-insert-zone .insert-btn {
+  display: none;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 2;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1px solid #d1d5db;
+  background: #fff;
+  color: #6b7280;
+  font-size: 15px;
+  line-height: 20px;
+  text-align: center;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  transition: background 0.1s, color 0.1s;
+}
+.step-insert-zone:hover .insert-btn { display: block; }
+.step-insert-zone .insert-btn:hover {
+  background: #1d4ed8;
+  color: #fff;
+  border-color: #1d4ed8;
+}
+/* Dashed line on hover */
+.step-insert-zone::after {
+  content: '';
+  display: none;
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  top: 50%;
+  border-top: 1px dashed #93c5fd;
+}
+.step-insert-zone:hover::after { display: block; }
+
+/* Step item */
+.step-entry {
+  padding: 7px 8px 7px 12px;
+  border-bottom: 1px solid #f0f0f0;
+  font-size: 12px;
+  line-height: 1.5;
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  transition: background 0.1s, box-shadow 0.15s;
+  cursor: default;
+}
+.step-entry:hover { background: #f9fafb; }
+.step-entry:hover .step-delete { opacity: 1; }
+
+/* Drag handle */
+.step-drag {
+  flex-shrink: 0;
+  cursor: grab;
+  color: #d1d5db;
+  font-size: 11px;
+  padding: 2px 2px 2px 0;
+  user-select: none;
+  transition: color 0.1s;
+}
+.step-drag:hover { color: #6b7280; }
+.step-entry:active .step-drag { cursor: grabbing; }
+
+/* Drag states */
+.step-entry.dragging {
+  opacity: 0.4;
+  background: #f3f4f6;
+}
+.step-entry.drag-over-above {
+  box-shadow: inset 0 2px 0 0 #1d4ed8;
+}
+.step-entry.drag-over-below {
+  box-shadow: inset 0 -2px 0 0 #1d4ed8;
+}
+
+.step-number {
+  color: #1d4ed8;
+  font-weight: 600;
+  font-size: 11px;
+  flex-shrink: 0;
+  min-width: 18px;
+  padding-top: 2px;
+}
+
+.step-text {
+  flex: 1;
+  min-width: 0;
+  color: #374151;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  padding: 1px 4px;
+  margin: -1px -4px;
+  outline: none;
+  transition: border-color 0.15s, background 0.15s;
+}
+.step-text:focus {
+  border-color: #93c5fd;
+  background: #eff6ff;
+}
+
+.step-time {
+  color: #9ca3af;
+  font-size: 11px;
+  flex-shrink: 0;
+  padding-top: 2px;
+}
+
+.step-delete {
+  opacity: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 12px;
+  padding: 1px 4px;
+  color: #d1d5db;
+  border-radius: 3px;
+  transition: opacity 0.1s, color 0.1s, background 0.1s;
+  flex-shrink: 0;
+}
+.step-delete:hover {
+  color: #ef4444;
+  background: #fef2f2;
+}
+
+/* Each action entry: icon + info + elapsed */
+.action-entry {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 5px 12px;
+  border-bottom: 1px solid #f0f0f0;
+  font-size: 12px;
+}
+.action-entry:hover { background: #f9fafb; }
+
+.action-icon {
+  font-size: 13px;
+  flex-shrink: 0;
+  width: 18px;
+  text-align: center;
+  margin-top: 1px;
+}
+
+.action-info {
+  flex: 1;
+  min-width: 0;
+}
+
+/* D-01: Selector in monospace */
+.action-selector {
+  font-family: 'SFMono-Regular', Consolas, 'Courier New', monospace;
+  font-size: 11px;
+  color: #374151;
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Detail line: text content, tag, role */
+.action-detail {
+  font-size: 10px;
+  color: #6b7280;
+  margin-top: 1px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.action-elapsed {
+  color: #9ca3af;
+  font-size: 11px;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+#empty-msg {
+  padding: 24px 12px;
+  color: #9ca3af;
+  font-size: 12px;
+  text-align: center;
+}
+
+/* D-04: Sticky footer always visible */
+#footer {
+  padding: 10px 12px;
+  border-top: 1px solid #e0e0e0;
+  background: #fafafa;
+  flex-shrink: 0;
+}
+
+#save-btn {
+  flex: 1;
+  padding: 8px 0;
+  background: #1d4ed8;
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+#save-btn:hover:not(:disabled) { background: #1e40af; }
+#save-btn:disabled {
+  background: #d1d5db;
+  color: #9ca3af;
+  cursor: not-allowed;
+}
+
+.footer-secondary {
+  width: 40px;
+  padding: 8px 0;
+  background: #374151;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.footer-secondary:hover { background: #1f2937; }
+.footer-secondary.hidden { display: none; }
+
+/* Steps footer */
+#footer-steps {
+  padding: 10px 12px;
+  border-top: 1px solid #e0e0e0;
+  background: #fafafa;
+  flex-shrink: 0;
+}
+#footer-steps.hidden { display: none; }
+
+.footer-row {
+  display: flex;
+  gap: 8px;
+}
+
+#copy-btn, #download-btn {
+  flex: 1;
+  padding: 8px 0;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+#copy-btn {
+  background: #1d4ed8;
+  color: #fff;
+}
+#copy-btn:hover { background: #1e40af; }
+#copy-btn.copied {
+  background: #22c55e;
+}
+
+#download-btn {
+  background: #374151;
+  color: #fff;
+}
+#download-btn:hover { background: #1f2937; }

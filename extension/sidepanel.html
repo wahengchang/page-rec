@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Behaviour Recorder</title>
+  <link rel="stylesheet" href="sidepanel.css">
+</head>
+<body>
+  <!-- Status indicator at top -->
+  <header id="header">
+    <div id="status-row">
+      <span id="status-dot" class="dot dot-green"></span>
+      <span id="status-text">Recording...</span>
+      <span id="action-count">(0 actions)</span>
+    </div>
+  </header>
+
+  <!-- Tab switcher (visible after save) -->
+  <nav id="tabs" class="hidden">
+    <button class="tab active" data-tab="actions">Actions</button>
+    <button class="tab" data-tab="steps">Steps</button>
+  </nav>
+
+  <!-- Tab: Actions (raw log) -->
+  <main id="tab-actions" class="tab-content active">
+    <ul id="action-list" aria-label="Captured actions"></ul>
+    <p id="empty-msg">No actions yet. Interact with the page.</p>
+  </main>
+
+  <!-- Tab: Steps (editable natural language) -->
+  <main id="tab-steps" class="tab-content">
+    <div id="steps-toolbar">
+      <button id="reset-btn" title="Reset to original">↺ Reset</button>
+    </div>
+    <ol id="steps-list"></ol>
+  </main>
+
+  <!-- Footer: changes based on active tab -->
+  <footer id="footer">
+    <div class="footer-row">
+      <button id="save-btn" disabled>Stop &amp; Save</button>
+      <button id="download-actions-btn" class="footer-secondary hidden" title="Download raw JSON">⬇</button>
+    </div>
+  </footer>
+  <footer id="footer-steps" class="hidden">
+    <div class="footer-row">
+      <button id="copy-btn">📋 Copy</button>
+      <button id="download-btn">⬇ Download</button>
+    </div>
+  </footer>
+
+  <script src="sidepanel.js"></script>
+</body>
+</html>

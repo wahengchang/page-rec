@@ -1,0 +1,21 @@
+{
+  "name": "page-rec",
+  "version": "1.0.0",
+  "description": "Browser behaviour recorder — capture interactions as Playwright tests",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "bin": {
+    "page-rec": "./bin/rec.js"
+  },
+  "scripts": {
+    "start": "node bin/rec.js"
+  },
+  "dependencies": {
+    "commander": "^14.0.0",
+    "express": "^5.2.0",
+    "open": "^11.0.0",
+    "picocolors": "^1.1.0"
+  }
+}

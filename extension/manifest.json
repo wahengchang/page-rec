@@ -1,0 +1,17 @@
+{
+  "manifest_version": 3,
+  "name": "Behaviour Recorder",
+  "version": "1.0.0",
+  "description": "Records browser interactions for Playwright test generation",
+  "permissions": ["sidePanel", "storage", "scripting", "tabs", "activeTab"],
+  "host_permissions": ["http://127.0.0.1/*", "https://*/*", "http://*/*"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
+  "action": {
+    "default_title": "Behaviour Recorder"
+  }
+}

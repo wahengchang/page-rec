@@ -2,33 +2,51 @@
 
 Browser behaviour recorder — capture interactions and turn them into Playwright tests.
 
-## Install
+## Getting started
+
+### 1. Install the CLI
 
 ```bash
 npm install -g page-rec
 ```
 
-Or run directly from a repo checkout (Node >= 20 required):
+Requires Node.js 20 or later.
 
-```bash
-node bin/rec.js <command>
-```
+### 2. Install the Chrome extension
 
-## Quick start
+1. Go to the [latest release](https://github.com/wahengchang/page-rec/releases/latest) and download `page-rec-extension-v*.zip`.
+2. Unzip it — you'll get a folder named `page-rec-extension/`.
+3. Open `chrome://extensions` in Google Chrome.
+4. Toggle **Developer mode** (top-right).
+5. Click **Load unpacked** and select the `page-rec-extension/` folder.
+
+Requires Google Chrome 114 or later (Side Panel API).
+
+> **Developer shortcut:** if you cloned the repo, skip the download — point **Load unpacked** at the `extension/` folder in your checkout directly.
+
+### 3. Record a session
 
 ```bash
 page-rec start -u https://example.com
 ```
 
-This will:
-1. Start a local server on a random port (bound to 127.0.0.1 only)
-2. Open Chrome to `https://example.com` with the port embedded in the URL hash
-3. Activate the Behaviour Recorder side panel automatically
-4. Capture every click, input, scroll, form submit, and SPA navigation
+Chrome opens with the Behaviour Recorder side panel, and every click, input, scroll, form submit, and SPA navigation gets captured. When you're done, click **Stop & Save** in the side panel — the recording is written to `recorder-scripts.json` in the current directory.
 
-When you are done, click **Stop & Save** in the side panel. The server shuts down and the recording is saved to `recorder-scripts.json` in the current directory.
+### 4. Export to a Playwright test
 
-## Commands
+```bash
+page-rec export my-recording
+```
+
+Writes `my-recording.spec.js` in the current directory. To run it:
+
+```bash
+npm install -D @playwright/test
+npx playwright install chromium
+npx playwright test my-recording.spec.js
+```
+
+## Command reference
 
 ### Start a recording
 
@@ -61,16 +79,6 @@ Writes `<name>.spec.js` in the current working directory. The file is a standalo
 - Password field values are masked as `***` during recording and exported as `// TODO: fill in real password` placeholders.
 - If the first recorded action is not a navigation, a synthetic `page.goto()` is prepended automatically.
 
-**Running the generated test:**
-
-`page-rec` does not bundle Playwright — it only generates the `.spec.js` text. To execute the exported test, install Playwright in your target project:
-
-```bash
-npm install -D @playwright/test
-npx playwright install chromium
-npx playwright test <name>.spec.js
-```
-
 ### Describe a recording in plain text
 
 ```bash
@@ -86,33 +94,6 @@ page-rec delete <name>
 ```
 
 Removes the named recording from `recorder-scripts.json`. Exits with code 1 if the name is not found.
-
-## Installing the Chrome extension
-
-### For end users (from a release zip)
-
-1. Download the latest `page-rec-extension-v*.zip` from the [GitHub Releases page](https://github.com/wahengchang/page-rec/releases).
-2. Unzip it. You will get a folder named `page-rec-extension/`.
-3. Open `chrome://extensions` in Google Chrome.
-4. Toggle **Developer mode** on (top-right corner).
-5. Click **Load unpacked** and select the `page-rec-extension/` folder.
-
-**Requirements:** Google Chrome 114 or later (required for the Side Panel API).
-
-**Notes:**
-- The extension only activates on tabs where `page-rec start` has opened the URL — it detects the `__rec=PORT` hash fragment automatically.
-- Only one recording session can be active at a time.
-- For a repo checkout, load the `extension/` folder directly via **Load unpacked** instead of downloading a zip.
-
-### For maintainers (building the release zip)
-
-From a repo checkout, run:
-
-```bash
-npm run build:extension
-```
-
-This produces `dist/page-rec-extension-v<version>.zip` using the current version from `extension/manifest.json`. Upload that file to a GitHub Release. The `dist/` folder is git-ignored.
 
 ## How it works
 
@@ -147,3 +128,11 @@ Recordings are stored in `recorder-scripts.json` in the directory where you ran 
 - **Ctrl+C** — exits without saving (data is lost)
 - **30-minute timeout** — auto-shuts down if no save is received
 - **Port conflict** — clear error if the explicit port is already in use
+
+## Building the release zip (maintainers)
+
+Bump `version` in `extension/manifest.json`, then run `npm run build:extension` to produce `dist/page-rec-extension-v<version>.zip`.
+
+Upload that file to a new GitHub Release (e.g. via `gh release create vX.Y.Z dist/page-rec-extension-vX.Y.Z.zip`).
+
+The `dist/` folder is git-ignored.

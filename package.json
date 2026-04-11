@@ -10,7 +10,8 @@
     "page-rec": "./bin/rec.js"
   },
   "scripts": {
-    "start": "node bin/rec.js"
+    "start": "node bin/rec.js",
+    "build:extension": "bash scripts/build-extension.sh"
   },
   "dependencies": {
     "commander": "^14.0.0",

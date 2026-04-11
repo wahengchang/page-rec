@@ -101,6 +101,28 @@ page-rec requires the **Behaviour Recorder** Chrome extension loaded as an unpac
 - The extension only activates on tabs where `page-rec start` has opened the URL — it detects the `__rec=PORT` hash fragment automatically.
 - Only one recording session can be active at a time.
 
+## Installing the Chrome extension
+
+### For end users (from a release zip)
+
+1. Download the latest `page-rec-extension-v*.zip` from the [GitHub Releases page](https://github.com/wahengchang/page-rec/releases).
+2. Unzip it. You will get a folder named `page-rec-extension/`.
+3. Open `chrome://extensions` in Google Chrome.
+4. Toggle **Developer mode** on (top-right corner).
+5. Click **Load unpacked** and select the `page-rec-extension/` folder.
+
+**Requirements:** Google Chrome 114 or later (required for the Side Panel API).
+
+### For maintainers (building the release zip)
+
+From a repo checkout, run:
+
+```bash
+npm run build:extension
+```
+
+This produces `dist/page-rec-extension-v<version>.zip` using the current version from `extension/manifest.json`. Upload that file to a GitHub Release. The `dist/` folder is git-ignored.
+
 ## How it works
 
 ```

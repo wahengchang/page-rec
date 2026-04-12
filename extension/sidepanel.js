@@ -19,26 +19,67 @@ const footerSteps  = document.getElementById('footer-steps');
 const copyBtn      = document.getElementById('copy-btn');
 const downloadBtn  = document.getElementById('download-btn');
 const dlActionsBtn = document.getElementById('download-actions-btn');
+const startBtn    = document.getElementById('start-btn');
 
 // ─── Keepalive ───────────────────────────────────────────────────────────────
 
-const keepalivePort = chrome.runtime.connect({ name: 'sidepanel-keepalive' });
-keepalivePort.onDisconnect.addListener(() => updateStatus(false));
+// Keepalive: keep service worker alive while panel is open.
+// Auto-reconnect on disconnect (MV3 workers restart periodically).
+// Do NOT change recording state on disconnect — that's controlled by
+// the Start/Stop buttons and save-complete messages, not worker lifecycle.
+let keepalivePort = chrome.runtime.connect({ name: 'sidepanel-keepalive' });
+keepalivePort.onDisconnect.addListener(() => {
+  keepalivePort = chrome.runtime.connect({ name: 'sidepanel-keepalive' });
+});
 
 // ─── State ───────────────────────────────────────────────────────────────────
 
 let capturedCount = 0;
-let isRecording = true;
+let isRecording = false;
+let currentSessionName = null;
 const allActions = [];
 let originalSteps = [];
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function updateStatus(recording) {
-  isRecording = recording;
-  statusDot.className = recording ? 'dot dot-green' : 'dot dot-red';
-  statusText.textContent = recording ? 'Recording...' : 'Stopped';
-  if (!recording) saveBtn.disabled = true;
+// State machine: 'idle' | 'recording' | 'stopped'
+function setState(state) {
+  isRecording = state === 'recording';
+  if (state === 'idle') {
+    statusDot.className = 'dot';
+    statusText.textContent = 'Ready';
+    startBtn.classList.remove('hidden');
+    startBtn.disabled = false;
+    startBtn.textContent = '▶ Start recording';
+    saveBtn.classList.add('hidden');
+    saveBtn.disabled = true;
+    saveBtn.textContent = 'Stop & Save';
+  } else if (state === 'recording') {
+    statusDot.className = 'dot dot-green';
+    statusText.textContent = 'Recording...';
+    startBtn.classList.remove('hidden');
+    startBtn.disabled = false;
+    startBtn.textContent = '↺ New';
+    saveBtn.classList.remove('hidden');
+    saveBtn.disabled = true;     // enabled when first action arrives
+    saveBtn.textContent = 'Stop & Save';
+  } else if (state === 'stopped') {
+    statusDot.className = 'dot dot-red';
+    statusText.textContent = 'Stopped';
+    startBtn.classList.remove('hidden');
+    startBtn.disabled = false;
+    startBtn.textContent = '▶ New recording';
+    saveBtn.classList.add('hidden');
+    saveBtn.disabled = true;
+  }
+}
+
+// Port of src/server.js deriveSessionName — pure function, no deps
+function deriveSessionName(targetUrl) {
+  const { hostname } = new URL(targetUrl);
+  const slug = hostname.replace(/\./g, '-');
+  const ts = Math.floor(Date.now() / 1000);
+  return `${slug}-${ts}`;
 }
 
 function escapeHtml(str) {
@@ -354,17 +395,28 @@ copyBtn.addEventListener('click', async () => {
   }
 });
 
-// ─── Footer: Download ────────────────────────────────────────────────────────
+// ─── Footer: Download Playwright spec (.spec.js) ────────────────────────────
 
 downloadBtn.addEventListener('click', () => {
-  const text = getStepsText();
-  const blob = new Blob([text], { type: 'text/plain' });
+  if (typeof window.generateTest !== 'function') {
+    console.error('[rec panel] generateTest not loaded');
+    return;
+  }
+  const recording = {
+    name: currentSessionName || 'recording',
+    timestamp: new Date().toISOString(),
+    actions: allActions,
+  };
+  const specText = window.generateTest(recording);
+  const blob = new Blob([specText], { type: 'application/javascript' });
   const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = 'recording-steps.txt';
-  a.click();
-  URL.revokeObjectURL(url);
+  chrome.downloads.download(
+    { url, filename: (currentSessionName || 'recording') + '.spec.js', saveAs: false },
+    () => {
+      // Revoke after download request is accepted
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+  );
 });
 
 // ─── Footer: Download raw actions JSON ───────────────────────────────────────
@@ -403,7 +455,7 @@ chrome.runtime.onMessage.addListener((msg) => {
   if (msg.type === 'action-log') {
     appendAction(msg.data);
   } else if (msg.type === 'save-complete') {
-    updateStatus(false);
+    setState('stopped');
     if (msg.error) {
       statusText.textContent = 'Error: ' + escapeHtml(msg.error);
       saveBtn.textContent = 'Stop & Save';
@@ -429,3 +481,40 @@ saveBtn.addEventListener('click', () => {
     saveBtn.textContent = 'Stop & Save';
   });
 });
+
+// ─── Start recording button ─────────────────────────────────────────────────
+
+startBtn.addEventListener('click', async () => {
+  startBtn.disabled = true;
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+    if (!tab || !tab.id || !tab.url) throw new Error('No active tab');
+    if (!/^https?:/.test(tab.url)) throw new Error('Can only record http(s) pages');
+    const sessionName = deriveSessionName(tab.url);
+    // Reset in-memory state (fresh session)
+    allActions.length = 0;
+    originalSteps = [];
+    capturedCount = 0;
+    actionCount.textContent = '(0 actions)';
+    actionList.innerHTML = '';
+    stepsList.innerHTML = '';
+    tabsNav.classList.add('hidden');
+    tabActions.classList.add('active');
+    tabSteps.classList.remove('active');
+    footer.classList.remove('hidden');
+    footerSteps.classList.add('hidden');
+    dlActionsBtn.classList.add('hidden');
+    if (emptyMsg) emptyMsg.style.display = '';
+    currentSessionName = sessionName;
+    setState('recording');
+    await chrome.runtime.sendMessage({ type: 'start-recording', data: { tabId: tab.id, sessionName } });
+  } catch (err) {
+    console.error('[rec panel] start failed:', err);
+    statusText.textContent = 'Error: ' + err.message;
+    setState('idle');
+  }
+});
+
+// ─── Initial state ──────────────────────────────────────────────────────────
+
+setState('idle');

@@ -1,6 +1,7 @@
 // extension/background.js — MV3 Service Worker
-// Brain of the recorder: hash detection, config fetch, content injection,
-// action buffering, message relay, save POST, keepalive port acceptance.
+// Brain of the recorder: start-recording handler, content injection,
+// action buffering, message relay, local save (chrome.storage.local + chrome.downloads),
+// keepalive port acceptance.
 // NO import/export — Chrome extension service workers use global scope scripts.
 
 // ─── Section 1: Service worker setup and keepalive ───────────────────────────
@@ -23,80 +24,27 @@ chrome.runtime.onConnect.addListener((port) => {
   }
 });
 
-// ─── Section 2: Tab hash detection (EXT-01) ──────────────────────────────────
+// ─── Section 2: Navigation re-injection listener ─────────────────────────────
 
-// Pitfall 1: changeInfo.url is only populated when extension has "tabs" permission.
-// Single-tab guard: only activate on the first matching tab (D-14, RESEARCH.md §Open Questions 2).
-// Track injection attempts to avoid double-injection
-const injectedTabs = new Set();
-
-async function tryActivateSession(tabId, url) {
-  if (!url || !url.includes('__rec=')) return;
-
-  // Single-tab guard: ignore if another recording session is already active
-  const existing = await chrome.storage.session.get(['activeTabId']);
-  if (existing.activeTabId != null) return;
-
-  // Avoid double-injection
-  if (injectedTabs.has(tabId)) return;
-
-  // Match #__rec=PORT — also handles multi-param hashes like #existing&__rec=PORT
-  const match = url.match(/#(?:.*&)?__rec=(\d+)/);
-  if (!match) return;
-  const port = parseInt(match[1], 10);
-
-  console.log('[rec] Detected recording session on tab', tabId, 'port', port);
-  injectedTabs.add(tabId);
-
-  // Store session state immediately (Pitfall 3: write to storage before anything async)
-  await chrome.storage.session.set({ activeTabId: tabId, port, actions: [], config: null });
-
-  // EXT-02: Fetch config from CLI server (service worker can fetch localhost via host_permissions)
-  let config;
-  try {
-    const res = await fetch(`http://127.0.0.1:${port}/extension-config`);
-    config = await res.json();
-  } catch (err) {
-    console.error('[rec] Failed to fetch extension-config:', err);
-    await chrome.storage.session.clear();
-    injectedTabs.delete(tabId);
-    return;
-  }
-  await chrome.storage.session.set({ config });
-
-  // D-24: Register side panel for this specific tab
-  await chrome.sidePanel.setOptions({ tabId, path: 'sidepanel.html', enabled: true });
-
-  // D-23: Inject content script only when hash detected (programmatic, not declarative)
-  // Pitfall 6: requires "scripting" permission in manifest
+// Re-inject content script when the recording tab navigates to a new document.
+// executeScript runs once per document — full page loads destroy the content script.
+// Without this listener, after the user records on page A and clicks a link to page B,
+// NO events get captured — silently. The listener is narrowed to re-injection only
+// (the old hash-based activation branch is gone — activation now happens via the
+// in-panel Start button → 'start-recording' message handler below).
+chrome.tabs.onUpdated.addListener(async (tabId, changeInfo) => {
+  if (changeInfo.status !== 'complete') return;
+  const { activeTabId } = await chrome.storage.session.get(['activeTabId']);
+  if (tabId !== activeTabId) return;
   try {
     await chrome.scripting.executeScript({ target: { tabId }, files: ['content.js'] });
-    console.log('[rec] Content script injected into tab', tabId);
+    console.log('[rec] Re-injected content script after navigation, tab', tabId);
   } catch (err) {
-    console.error('[rec] Failed to inject content script:', err);
-    injectedTabs.delete(tabId);
+    console.error('[rec] Re-injection after navigation failed:', err);
   }
-}
-
-chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
-  // Check on every event — URL changes, status changes, etc.
-  // The hash might be visible in changeInfo.url OR tab.url at different times
-  const url = changeInfo.url || tab.url;
-  await tryActivateSession(tabId, url);
-
-  // Re-inject content script when the recording tab navigates to a new page.
-  // executeScript only runs once — page navigation destroys the content script.
-  if (changeInfo.status === 'complete') {
-    const { activeTabId } = await chrome.storage.session.get(['activeTabId']);
-    if (tabId === activeTabId && injectedTabs.has(tabId)) {
-      try {
-        await chrome.scripting.executeScript({ target: { tabId }, files: ['content.js'] });
-        console.log('[rec] Re-injected content script after navigation, tab', tabId);
-      } catch (err) {
-        console.error('[rec] Re-injection failed:', err);
-      }
-    }
-  }
+  // Do NOT overwrite chrome.storage.session.config here — content.js reads
+  // config.startedAt on every injection and needs the original value so
+  // elapsed-time calculations remain consistent across navigations.
 });
 
 // ─── Section 3: Message relay (EXT-03, D-18, D-19) ──────────────────────────
@@ -104,6 +52,37 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
 // D-18: All messages use typed format: { type, data }
 // Pitfall 5: onMessage handler is NOT async at the outer level — returns false for fire-and-forget
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  // ── Start recording from side panel ──
+  if (msg.type === 'start-recording') {
+    const { tabId, sessionName } = msg.data;
+    (async () => {
+      try {
+        // D-14: Single-tab guard — ignore if another recording session is active
+        const existing = await chrome.storage.session.get(['activeTabId']);
+        if (existing.activeTabId != null && existing.activeTabId !== tabId) {
+          chrome.runtime.sendMessage({ type: 'save-complete', error: 'Another tab is already recording' }).catch(() => {});
+          return;
+        }
+        // Pitfall 3: write session state BEFORE async injection so content.js
+        // can read config.startedAt on first load (elapsed-time baseline)
+        await chrome.storage.session.set({
+          activeTabId: tabId,
+          actions: [],
+          sessionName,
+          config: { startedAt: Date.now() }
+        });
+        // D-23: Programmatic content script injection (not declarative)
+        await chrome.scripting.executeScript({ target: { tabId }, files: ['content.js'] });
+        console.log('[rec] Recording started on tab', tabId, 'session', sessionName);
+      } catch (err) {
+        console.error('[rec] start-recording failed:', err);
+        await chrome.storage.session.clear();
+        chrome.runtime.sendMessage({ type: 'save-complete', error: String(err) }).catch(() => {});
+      }
+    })();
+    return false; // fire-and-forget
+  }
+
   // ── Action from content script ──
   if (msg.type === 'action') {
     // D-15: Buffer action in storage immediately (protects against service worker termination)
@@ -120,45 +99,43 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     return false; // fire-and-forget, no sendResponse needed
   }
 
-  // ── Stop & Save from side panel (D-21, Pattern 7) ──
+  // ── Stop & Save from side panel (local-only: chrome.storage.local + chrome.downloads) ──
   if (msg.type === 'save') {
-    chrome.storage.session.get(['actions', 'config', 'port']).then(async ({ actions = [], config, port }) => {
-      if (!config || !port) {
-        console.error('[rec] Cannot save: missing config or port in session storage');
+    chrome.storage.session.get(['actions', 'sessionName']).then(async ({ actions = [], sessionName }) => {
+      if (!sessionName) {
         chrome.runtime.sendMessage({ type: 'save-complete', error: 'No active session' }).catch(() => {});
         return;
       }
+      const recording = { name: sessionName, timestamp: new Date().toISOString(), actions };
       try {
-        await fetch(`http://127.0.0.1:${port}/api/actions`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: config.sessionName, actions })
-        });
+        // 1. Append to chrome.storage.local['recordings'] (persistent history)
+        const { recordings = [] } = await chrome.storage.local.get(['recordings']);
+        recordings.push(recording);
+        await chrome.storage.local.set({ recordings });
+
+        // 2. Trigger JSON download via chrome.downloads
+        // Service worker has no DOM → use a data: URL (URL.createObjectURL is unreliable here)
+        const json = JSON.stringify(recording, null, 2);
+        const dataUrl = 'data:application/json;charset=utf-8;base64,' + btoa(unescape(encodeURIComponent(json)));
+        await chrome.downloads.download({ url: dataUrl, filename: sessionName + '.json', saveAs: false });
+
         chrome.runtime.sendMessage({ type: 'save-complete' }).catch(() => {});
       } catch (err) {
-        console.error('[rec] Save POST failed:', err);
+        console.error('[rec] Save failed:', err);
         chrome.runtime.sendMessage({ type: 'save-complete', error: String(err) }).catch(() => {});
+      } finally {
+        // Clear session state whether success or failure
+        await chrome.storage.session.clear();
       }
-      // Clear session state after save (successful or not)
-      await chrome.storage.session.clear();
     });
 
     return false; // async work is internal; no sendResponse
-  }
-
-  // ── Config request from side panel ──
-  if (msg.type === 'config-request') {
-    chrome.storage.session.get(['config']).then(({ config }) => {
-      chrome.runtime.sendMessage({ type: 'config-response', data: config }).catch(() => {});
-    });
-    return false;
   }
 });
 
 // ─── Section 4: Clear session on tab close ───────────────────────────────────
 
 chrome.tabs.onRemoved.addListener(async (tabId) => {
-  injectedTabs.delete(tabId);
   const { activeTabId } = await chrome.storage.session.get(['activeTabId']);
   if (tabId === activeTabId) {
     await chrome.storage.session.clear();

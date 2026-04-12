@@ -392,3 +392,21 @@ body {
   color: #fff;
 }
 #download-btn:hover { background: #1f2937; }
+
+/* Start button (standalone-mode activation) */
+#controls-row { margin-top: 8px; }
+.btn-start {
+  width: 100%;
+  padding: 8px 12px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+  background: #16a34a;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.btn-start:hover { background: #15803d; }
+.btn-start:disabled { background: #9ca3af; cursor: not-allowed; }
+.btn-start.hidden { display: none; }
+#save-btn.hidden { display: none; }

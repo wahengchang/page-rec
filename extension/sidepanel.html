@@ -7,7 +7,6 @@
   <link rel="stylesheet" href="sidepanel.css">
 </head>
 <body>
-  <!-- Status indicator at top -->
   <header id="header">
     <div id="status-row">
       <span id="status-dot" class="dot"></span>
@@ -15,43 +14,38 @@
       <span id="action-count">(0 actions)</span>
     </div>
     <div id="controls-row">
-      <button id="start-btn" class="btn-start">▶ Start recording</button>
+      <button id="start-btn" class="btn-start">Start recording</button>
+      <button id="stop-btn" class="btn-stop hidden">Stop Recording</button>
+      <button id="pause-btn" class="btn-pause hidden">Pause</button>
+      <button id="new-btn" class="btn-new hidden">↺ New</button>
     </div>
   </header>
 
-  <!-- Tab switcher (visible after save) -->
   <nav id="tabs" class="hidden">
-    <button class="tab active" data-tab="actions">Actions</button>
-    <button class="tab" data-tab="steps">Steps</button>
+    <button class="tab active" data-tab="timeline">Timeline</button>
+    <button class="tab" data-tab="test-steps">Test Steps</button>
   </nav>
 
-  <!-- Tab: Actions (raw log) -->
-  <main id="tab-actions" class="tab-content active">
+  <main id="tab-timeline" class="tab-content active">
     <ul id="action-list" aria-label="Captured actions"></ul>
-    <p id="empty-msg">No actions yet. Interact with the page.</p>
+    <p id="empty-msg">Click 'Start recording' and interact with the page. We'll capture your clicks, typing, and navigation.</p>
   </main>
 
-  <!-- Tab: Steps (editable natural language) -->
-  <main id="tab-steps" class="tab-content">
+  <main id="tab-test-steps" class="tab-content">
     <div id="steps-toolbar">
       <button id="reset-btn" title="Reset to original">↺ Reset</button>
     </div>
     <ol id="steps-list"></ol>
   </main>
 
-  <!-- Footer: changes based on active tab -->
-  <footer id="footer">
+  <footer id="footer-edit" class="hidden">
     <div class="footer-row">
-      <button id="save-btn" class="hidden" disabled>Stop &amp; Save</button>
-      <button id="download-actions-btn" class="footer-secondary hidden" title="Download raw JSON">⬇</button>
+      <button id="copy-code-btn" class="btn-primary">Copy Code</button>
+      <button id="download-spec-btn" class="btn-ghost">Download .spec.js</button>
     </div>
   </footer>
-  <footer id="footer-steps" class="hidden">
-    <div class="footer-row">
-      <button id="copy-btn">📋 Copy</button>
-      <button id="download-btn">⬇ Download</button>
-    </div>
-  </footer>
+
+  <div id="toast" class="toast hidden">Copied!</div>
 
   <script src="export.js"></script>
   <script src="sidepanel.js"></script>

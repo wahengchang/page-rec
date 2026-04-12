@@ -3,30 +3,27 @@
 
 // ─── DOM refs ────────────────────────────────────────────────────────────────
 
-const statusDot    = document.getElementById('status-dot');
-const statusText   = document.getElementById('status-text');
-const actionCount  = document.getElementById('action-count');
-const actionList   = document.getElementById('action-list');
-const saveBtn      = document.getElementById('save-btn');
-const emptyMsg     = document.getElementById('empty-msg');
-const tabsNav      = document.getElementById('tabs');
-const tabActions   = document.getElementById('tab-actions');
-const tabSteps     = document.getElementById('tab-steps');
-const stepsList    = document.getElementById('steps-list');
-const resetBtn     = document.getElementById('reset-btn');
-const footer       = document.getElementById('footer');
-const footerSteps  = document.getElementById('footer-steps');
-const copyBtn      = document.getElementById('copy-btn');
-const downloadBtn  = document.getElementById('download-btn');
-const dlActionsBtn = document.getElementById('download-actions-btn');
-const startBtn    = document.getElementById('start-btn');
+const statusDot      = document.getElementById('status-dot');
+const statusText     = document.getElementById('status-text');
+const actionCount    = document.getElementById('action-count');
+const actionList     = document.getElementById('action-list');
+const emptyMsg       = document.getElementById('empty-msg');
+const tabsNav        = document.getElementById('tabs');
+const tabTimeline    = document.getElementById('tab-timeline');
+const tabTestSteps   = document.getElementById('tab-test-steps');
+const stepsList      = document.getElementById('steps-list');
+const resetBtn       = document.getElementById('reset-btn');
+const startBtn       = document.getElementById('start-btn');
+const stopBtn        = document.getElementById('stop-btn');
+const pauseBtn       = document.getElementById('pause-btn');
+const newBtn         = document.getElementById('new-btn');
+const footerEdit     = document.getElementById('footer-edit');
+const copyCodeBtn    = document.getElementById('copy-code-btn');
+const downloadSpecBtn = document.getElementById('download-spec-btn');
+const toast          = document.getElementById('toast');
 
 // ─── Keepalive ───────────────────────────────────────────────────────────────
 
-// Keepalive: keep service worker alive while panel is open.
-// Auto-reconnect on disconnect (MV3 workers restart periodically).
-// Do NOT change recording state on disconnect — that's controlled by
-// the Start/Stop buttons and save-complete messages, not worker lifecycle.
 let keepalivePort = chrome.runtime.connect({ name: 'sidepanel-keepalive' });
 keepalivePort.onDisconnect.addListener(() => {
   keepalivePort = chrome.runtime.connect({ name: 'sidepanel-keepalive' });
@@ -36,45 +33,59 @@ keepalivePort.onDisconnect.addListener(() => {
 
 let capturedCount = 0;
 let isRecording = false;
+let isPaused = false;
 let currentSessionName = null;
 const allActions = [];
 let originalSteps = [];
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-// State machine: 'idle' | 'recording' | 'stopped'
+function showToast(msg, duration) {
+  toast.textContent = msg || 'Copied!';
+  toast.classList.remove('hidden');
+  setTimeout(() => toast.classList.add('hidden'), duration || 1500);
+}
+
+// State machine: 'idle' | 'recording' | 'paused' | 'stopped'
 function setState(state) {
-  isRecording = state === 'recording';
+  isRecording = (state === 'recording' || state === 'paused');
+  isPaused = (state === 'paused');
+
+  // Hide all controls, then selectively show
+  startBtn.classList.add('hidden');
+  stopBtn.classList.add('hidden');
+  pauseBtn.classList.add('hidden');
+  newBtn.classList.add('hidden');
+  footerEdit.classList.add('hidden');
+
   if (state === 'idle') {
     statusDot.className = 'dot';
     statusText.textContent = 'Ready';
     startBtn.classList.remove('hidden');
     startBtn.disabled = false;
-    startBtn.textContent = '▶ Start recording';
-    saveBtn.classList.add('hidden');
-    saveBtn.disabled = true;
-    saveBtn.textContent = 'Stop & Save';
   } else if (state === 'recording') {
-    statusDot.className = 'dot dot-green';
+    statusDot.className = 'dot dot-green pulse';
     statusText.textContent = 'Recording...';
-    startBtn.classList.remove('hidden');
-    startBtn.disabled = false;
-    startBtn.textContent = '↺ New';
-    saveBtn.classList.remove('hidden');
-    saveBtn.disabled = true;     // enabled when first action arrives
-    saveBtn.textContent = 'Stop & Save';
+    stopBtn.classList.remove('hidden');
+    stopBtn.disabled = (capturedCount === 0);
+    pauseBtn.classList.remove('hidden');
+    pauseBtn.textContent = 'Pause';
+    newBtn.classList.remove('hidden');
+  } else if (state === 'paused') {
+    statusDot.className = 'dot dot-yellow';
+    statusText.textContent = 'Paused';
+    stopBtn.classList.remove('hidden');
+    pauseBtn.classList.remove('hidden');
+    pauseBtn.textContent = 'Resume';
+    newBtn.classList.remove('hidden');
   } else if (state === 'stopped') {
     statusDot.className = 'dot dot-red';
     statusText.textContent = 'Stopped';
-    startBtn.classList.remove('hidden');
-    startBtn.disabled = false;
-    startBtn.textContent = '▶ New recording';
-    saveBtn.classList.add('hidden');
-    saveBtn.disabled = true;
+    newBtn.classList.remove('hidden');
+    footerEdit.classList.remove('hidden');
   }
 }
 
-// Port of src/server.js deriveSessionName — pure function, no deps
 function deriveSessionName(targetUrl) {
   const { hostname } = new URL(targetUrl);
   const slug = hostname.replace(/\./g, '-');
@@ -92,7 +103,7 @@ function formatTime(ms) {
   return ms < 1000 ? ms + 'ms' : (ms / 1000).toFixed(1) + 's';
 }
 
-// ─── Action log (Actions tab) ────────────────────────────────────────────────
+// ─── Timeline entries (human-readable) ───────────────────────────────────────
 
 function appendAction(action) {
   if (emptyMsg) emptyMsg.style.display = 'none';
@@ -100,27 +111,28 @@ function appendAction(action) {
 
   const li = document.createElement('li');
   li.className = 'action-entry';
-  const meta = action.meta || {};
-  const details = [];
-  if (action.value) details.push(escapeHtml(action.value.slice(0, 40)));
-  if (meta.textContent && action.type === 'click') details.push('"' + escapeHtml(meta.textContent.slice(0, 30)) + '"');
-  if (meta.tagName) details.push('&lt;' + escapeHtml(meta.tagName) + '&gt;');
-  if (meta.role) details.push('role=' + escapeHtml(meta.role));
-  const detailStr = details.length ? '<div class="action-detail">' + details.join(' · ') + '</div>' : '';
+
+  // Human-readable description as primary text
+  const humanText = describeAction(action);
+  const rawSelector = action.selector || action.url || '';
+  const detailsHtml = rawSelector
+    ? '<details class="action-details"><summary>Details</summary><code>' + escapeHtml(rawSelector) + '</code></details>'
+    : '';
 
   li.innerHTML =
     '<span class="action-icon">' + (ACTION_ICONS[action.type] || '?') + '</span>' +
     '<div class="action-info">' +
-      '<span class="action-selector" title="' + escapeHtml(action.selector) + '">' + escapeHtml(action.selector || action.url || '') + '</span>' +
-      detailStr +
+      '<span class="action-text">' + escapeHtml(humanText) + '</span>' +
+      detailsHtml +
     '</div>' +
-    '<span class="action-elapsed">' + action.elapsed + 'ms</span>';
+    '<span class="action-elapsed">' + formatTime(action.elapsed) + '</span>';
 
   actionList.appendChild(li);
   li.scrollIntoView({ behavior: 'smooth', block: 'end' });
   capturedCount++;
   actionCount.textContent = '(' + capturedCount + ' action' + (capturedCount === 1 ? '' : 's') + ')';
-  if (isRecording) saveBtn.disabled = false;
+  // Enable stop button after first action
+  if (isRecording) stopBtn.disabled = false;
 }
 
 // ─── Describe actions in natural language ────────────────────────────────────
@@ -129,29 +141,22 @@ function describeElement(action) {
   const meta = action.meta || {};
   const parts = [];
 
-  // Tag name — always include as the anchor (e.g. <button>, <input>)
   let tag = meta.tagName ? '<' + meta.tagName : '';
-  // Always attach the best identifier to the tag
   if (meta.testId) tag += ' data-testid="' + meta.testId + '"';
   else if (meta.id) tag += ' id="' + meta.id + '"';
   else if (meta.name) tag += ' name="' + meta.name + '"';
   else if (meta.className) {
-    // Use first 2 classes max to keep it readable
     const cls = meta.className.split(/\s+/).slice(0, 2).join('.');
     if (cls) tag += '.' + cls;
   }
   if (tag) parts.push(tag + '>');
 
-  // Role for accessibility context
   if (meta.role) parts.push('[role="' + meta.role + '"]');
-
-  // Label — how a user would identify it
   if (meta.ariaLabel) parts.push('labeled "' + meta.ariaLabel + '"');
   else if (meta.placeholder) parts.push('placeholder "' + meta.placeholder + '"');
 
-  // Visible text for clicks
   if (action.type === 'click' && meta.textContent) {
-    parts.push('showing "' + meta.textContent.slice(0, 40) + '"');
+    parts.push('"' + meta.textContent.slice(0, 40) + '"');
   }
 
   return parts.length ? parts.join(' ') : action.selector;
@@ -160,10 +165,10 @@ function describeElement(action) {
 function describeAction(action) {
   const el = describeElement(action);
   switch (action.type) {
-    case 'click': return 'Clicked on ' + el;
+    case 'click': return 'Clicked ' + el;
     case 'input': return action.value === '***' ? 'Typed a password into ' + el : 'Typed "' + action.value + '" into ' + el;
     case 'scroll': return 'Scrolled to y=' + ((action.value || '0,0').split(',')[1] || '0') + 'px';
-    case 'submit': return 'Submitted form at ' + el;
+    case 'submit': return 'Submitted form ' + el;
     case 'navigate': return 'Navigated to ' + action.url;
     default: return action.type + ' on ' + el;
   }
@@ -178,24 +183,62 @@ function createInsertZone(beforeIndex) {
   zone.className = 'step-insert-zone';
   const btn = document.createElement('button');
   btn.className = 'insert-btn';
-  btn.textContent = '+';
+  btn.textContent = '+ Add step';
   btn.title = 'Insert step here';
   btn.addEventListener('click', () => {
-    const li = createStepElement('New step — click to edit', '', 0);
-    zone.after(li);
-    // Add a new insert zone after the inserted item
-    const newZone = createInsertZone(0);
-    li.after(newZone);
-    renumberSteps();
-    const textEl = li.querySelector('.step-text');
-    textEl.focus();
-    const range = document.createRange();
-    range.selectNodeContents(textEl);
-    window.getSelection().removeAllRanges();
-    window.getSelection().addRange(range);
+    // Replace zone with editor card
+    const card = createStepEditorCard(zone);
+    zone.replaceWith(card);
   });
   zone.appendChild(btn);
   return zone;
+}
+
+function createStepEditorCard(replacedZone) {
+  const card = document.createElement('div');
+  card.className = 'step-editor-card';
+
+  card.innerHTML =
+    '<label>Action</label>' +
+    '<select class="editor-action">' +
+      '<option value="click">Click</option>' +
+      '<option value="fill">Fill / Type</option>' +
+      '<option value="navigate">Navigate</option>' +
+      '<option value="assert">Assert</option>' +
+    '</select>' +
+    '<label>Target / Value</label>' +
+    '<input type="text" class="editor-target" placeholder="e.g. #submit-btn or https://example.com">' +
+    '<div class="step-editor-actions">' +
+      '<button class="step-editor-cancel">Cancel</button>' +
+      '<button class="step-editor-save">✓ Save</button>' +
+    '</div>';
+
+  card.querySelector('.step-editor-cancel').addEventListener('click', () => {
+    // Restore the insert zone
+    const zone = createInsertZone(0);
+    card.replaceWith(zone);
+  });
+
+  card.querySelector('.step-editor-save').addEventListener('click', () => {
+    const actionType = card.querySelector('.editor-action').value;
+    const target = card.querySelector('.editor-target').value.trim();
+    if (!target) { card.querySelector('.editor-target').focus(); return; }
+
+    const labels = { click: 'Click on', fill: 'Type into', navigate: 'Navigate to', assert: 'Assert on' };
+    const text = (labels[actionType] || actionType) + ' ' + target;
+
+    const li = createStepElement(text, '', 0);
+    const zone = createInsertZone(0);
+    card.replaceWith(zone);
+    zone.after(li);
+    const newZone = createInsertZone(0);
+    li.after(newZone);
+    renumberSteps();
+  });
+
+  // Auto-focus the target input
+  setTimeout(() => card.querySelector('.editor-target').focus(), 50);
+  return card;
 }
 
 function createStepElement(text, time, index) {
@@ -203,7 +246,6 @@ function createStepElement(text, time, index) {
   li.className = 'step-entry';
   li.draggable = true;
 
-  // Drag handle
   const drag = document.createElement('span');
   drag.className = 'step-drag';
   drag.textContent = '⠿';
@@ -217,7 +259,6 @@ function createStepElement(text, time, index) {
   textSpan.className = 'step-text';
   textSpan.contentEditable = 'true';
   textSpan.textContent = text;
-  // Prevent drag when editing text
   textSpan.addEventListener('mousedown', (e) => e.stopPropagation());
 
   const timeSpan = document.createElement('span');
@@ -229,7 +270,6 @@ function createStepElement(text, time, index) {
   delBtn.textContent = '✕';
   delBtn.title = 'Remove step';
   delBtn.addEventListener('click', () => {
-    // Remove the insert zone before this item too
     if (li.previousElementSibling && li.previousElementSibling.classList.contains('step-insert-zone')) {
       li.previousElementSibling.remove();
     }
@@ -243,21 +283,19 @@ function createStepElement(text, time, index) {
   li.appendChild(timeSpan);
   li.appendChild(delBtn);
 
-  // ─── Drag events ───
+  // Drag events
   li.addEventListener('dragstart', (e) => {
     draggedEl = li;
     li.classList.add('dragging');
     e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', ''); // required for Firefox
+    e.dataTransfer.setData('text/plain', '');
   });
-
   li.addEventListener('dragend', () => {
     li.classList.remove('dragging');
     clearAllDragOver();
     draggedEl = null;
     renumberSteps();
   });
-
   li.addEventListener('dragover', (e) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
@@ -265,31 +303,22 @@ function createStepElement(text, time, index) {
     clearAllDragOver();
     const rect = li.getBoundingClientRect();
     const midY = rect.top + rect.height / 2;
-    if (e.clientY < midY) {
-      li.classList.add('drag-over-above');
-    } else {
-      li.classList.add('drag-over-below');
-    }
+    if (e.clientY < midY) li.classList.add('drag-over-above');
+    else li.classList.add('drag-over-below');
   });
-
   li.addEventListener('dragleave', () => {
     li.classList.remove('drag-over-above', 'drag-over-below');
   });
-
   li.addEventListener('drop', (e) => {
     e.preventDefault();
     if (!draggedEl || draggedEl === li) return;
-
     const rect = li.getBoundingClientRect();
     const midY = rect.top + rect.height / 2;
     const insertBefore = e.clientY < midY;
-
-    // Move the dragged element (and its preceding insert zone)
     const dragZone = draggedEl.previousElementSibling;
     const hasDragZone = dragZone && dragZone.classList.contains('step-insert-zone');
 
     if (insertBefore) {
-      // Find the insert zone before target
       const targetZone = li.previousElementSibling;
       if (targetZone && targetZone.classList.contains('step-insert-zone')) {
         stepsList.insertBefore(draggedEl, targetZone);
@@ -299,22 +328,16 @@ function createStepElement(text, time, index) {
         if (hasDragZone) stepsList.insertBefore(dragZone, draggedEl);
       }
     } else {
-      // Insert after target
       const afterEl = li.nextElementSibling;
       if (afterEl) {
-        // Skip insert zone if present
         const skipTo = afterEl.classList.contains('step-insert-zone') ? afterEl.nextElementSibling : afterEl;
-        if (skipTo) {
-          stepsList.insertBefore(draggedEl, skipTo);
-        } else {
-          stepsList.appendChild(draggedEl);
-        }
+        if (skipTo) stepsList.insertBefore(draggedEl, skipTo);
+        else stepsList.appendChild(draggedEl);
       } else {
         stepsList.appendChild(draggedEl);
       }
       if (hasDragZone) stepsList.insertBefore(dragZone, draggedEl);
     }
-
     clearAllDragOver();
     renumberSteps();
   });
@@ -344,13 +367,9 @@ function buildStepsView() {
     const text = describeAction(action);
     const time = formatTime(action.elapsed);
     originalSteps.push({ text, time });
-
-    // Insert zone before each item
     stepsList.appendChild(createInsertZone(i));
     stepsList.appendChild(createStepElement(text, time, i));
   });
-
-  // Final insert zone at the end
   stepsList.appendChild(createInsertZone(allActions.length));
 }
 
@@ -378,26 +397,31 @@ function getStepsText() {
   return lines.join('\n');
 }
 
-// ─── Footer: Copy ────────────────────────────────────────────────────────────
+// ─── Footer: Copy Code (Playwright spec to clipboard) ────────────────────────
 
-copyBtn.addEventListener('click', async () => {
-  const text = getStepsText();
+copyCodeBtn.addEventListener('click', async () => {
+  if (typeof window.generateTest !== 'function') {
+    console.error('[rec panel] generateTest not loaded');
+    return;
+  }
+  const recording = {
+    name: currentSessionName || 'recording',
+    timestamp: new Date().toISOString(),
+    actions: allActions,
+  };
+  const specText = window.generateTest(recording);
   try {
-    await navigator.clipboard.writeText(text);
-    copyBtn.textContent = '✓ Copied';
-    copyBtn.classList.add('copied');
-    setTimeout(() => {
-      copyBtn.textContent = '📋 Copy';
-      copyBtn.classList.remove('copied');
-    }, 1500);
+    await navigator.clipboard.writeText(specText);
+    showToast('Copied!');
   } catch (err) {
     console.error('Copy failed:', err);
+    showToast('Copy failed', 2000);
   }
 });
 
-// ─── Footer: Download Playwright spec (.spec.js) ────────────────────────────
+// ─── Footer: Download .spec.js ───────────────────────────────────────────────
 
-downloadBtn.addEventListener('click', () => {
+downloadSpecBtn.addEventListener('click', () => {
   if (typeof window.generateTest !== 'function') {
     console.error('[rec panel] generateTest not loaded');
     return;
@@ -412,35 +436,18 @@ downloadBtn.addEventListener('click', () => {
   const url = URL.createObjectURL(blob);
   chrome.downloads.download(
     { url, filename: (currentSessionName || 'recording') + '.spec.js', saveAs: false },
-    () => {
-      // Revoke after download request is accepted
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
-    }
+    () => setTimeout(() => URL.revokeObjectURL(url), 1000)
   );
-});
-
-// ─── Footer: Download raw actions JSON ───────────────────────────────────────
-
-dlActionsBtn.addEventListener('click', () => {
-  const data = JSON.stringify(allActions, null, 2);
-  const blob = new Blob([data], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = 'recording-actions.json';
-  a.click();
-  URL.revokeObjectURL(url);
 });
 
 // ─── Tab switching ───────────────────────────────────────────────────────────
 
 function switchTab(target) {
   tabsNav.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  tabsNav.querySelector('[data-tab="' + target + '"]').classList.add('active');
-  tabActions.classList.toggle('active', target === 'actions');
-  tabSteps.classList.toggle('active', target === 'steps');
-  footer.classList.toggle('hidden', target === 'steps');
-  footerSteps.classList.toggle('hidden', target !== 'steps');
+  const btn = tabsNav.querySelector('[data-tab="' + target + '"]');
+  if (btn) btn.classList.add('active');
+  tabTimeline.classList.toggle('active', target === 'timeline');
+  tabTestSteps.classList.toggle('active', target === 'test-steps');
 }
 
 tabsNav.addEventListener('click', (e) => {
@@ -453,33 +460,72 @@ tabsNav.addEventListener('click', (e) => {
 
 chrome.runtime.onMessage.addListener((msg) => {
   if (msg.type === 'action-log') {
-    appendAction(msg.data);
+    if (!isPaused) appendAction(msg.data);
   } else if (msg.type === 'save-complete') {
     setState('stopped');
     if (msg.error) {
       statusText.textContent = 'Error: ' + escapeHtml(msg.error);
-      saveBtn.textContent = 'Stop & Save';
     } else {
-      saveBtn.textContent = 'Saved ✓';
-      dlActionsBtn.classList.remove('hidden');
       buildStepsView();
       tabsNav.classList.remove('hidden');
-      switchTab('steps');
+      switchTab('test-steps');
     }
   }
 });
 
-// ─── Stop & Save button ─────────────────────────────────────────────────────
+// ─── Stop Recording button ──────────────────────────────────────────────────
 
-saveBtn.addEventListener('click', () => {
+stopBtn.addEventListener('click', () => {
   if (!isRecording) return;
-  saveBtn.disabled = true;
-  saveBtn.textContent = 'Saving...';
+  stopBtn.disabled = true;
+  stopBtn.textContent = 'Saving...';
   chrome.runtime.sendMessage({ type: 'save' }).catch((err) => {
     console.error('[rec panel] Save message failed:', err);
-    saveBtn.disabled = false;
-    saveBtn.textContent = 'Stop & Save';
+    stopBtn.disabled = false;
+    stopBtn.textContent = 'Stop Recording';
   });
+});
+
+// ─── Pause / Resume button ──────────────────────────────────────────────────
+
+pauseBtn.addEventListener('click', () => {
+  if (isPaused) {
+    setState('recording');
+  } else {
+    setState('paused');
+  }
+});
+
+// ─── New button (discard and restart) ────────────────────────────────────────
+
+newBtn.addEventListener('click', async () => {
+  newBtn.disabled = true;
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+    if (!tab || !tab.id || !tab.url) throw new Error('No active tab');
+    if (!/^https?:/.test(tab.url)) throw new Error('Can only record http(s) pages');
+    const sessionName = deriveSessionName(tab.url);
+    // Reset in-memory state
+    allActions.length = 0;
+    originalSteps = [];
+    capturedCount = 0;
+    actionCount.textContent = '(0 actions)';
+    actionList.innerHTML = '';
+    stepsList.innerHTML = '';
+    tabsNav.classList.add('hidden');
+    tabTimeline.classList.add('active');
+    tabTestSteps.classList.remove('active');
+    if (emptyMsg) emptyMsg.style.display = '';
+    currentSessionName = sessionName;
+    setState('recording');
+    await chrome.runtime.sendMessage({ type: 'start-recording', data: { tabId: tab.id, sessionName } });
+  } catch (err) {
+    console.error('[rec panel] start failed:', err);
+    statusText.textContent = 'Error: ' + err.message;
+    setState('idle');
+  } finally {
+    newBtn.disabled = false;
+  }
 });
 
 // ─── Start recording button ─────────────────────────────────────────────────
@@ -491,7 +537,6 @@ startBtn.addEventListener('click', async () => {
     if (!tab || !tab.id || !tab.url) throw new Error('No active tab');
     if (!/^https?:/.test(tab.url)) throw new Error('Can only record http(s) pages');
     const sessionName = deriveSessionName(tab.url);
-    // Reset in-memory state (fresh session)
     allActions.length = 0;
     originalSteps = [];
     capturedCount = 0;
@@ -499,11 +544,8 @@ startBtn.addEventListener('click', async () => {
     actionList.innerHTML = '';
     stepsList.innerHTML = '';
     tabsNav.classList.add('hidden');
-    tabActions.classList.add('active');
-    tabSteps.classList.remove('active');
-    footer.classList.remove('hidden');
-    footerSteps.classList.add('hidden');
-    dlActionsBtn.classList.add('hidden');
+    tabTimeline.classList.add('active');
+    tabTestSteps.classList.remove('active');
     if (emptyMsg) emptyMsg.style.display = '';
     currentSessionName = sessionName;
     setState('recording');

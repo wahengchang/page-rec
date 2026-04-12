@@ -1,4 +1,4 @@
-/* D-02: Clean minimal CSS, dark-on-light, no framework */
+/* Page Rec — Side Panel CSS */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
@@ -12,12 +12,15 @@ body {
   overflow: hidden;
 }
 
-/* Header */
+/* ─── Header ──────────────────────────────────────────────────────────────── */
 #header {
   padding: 10px 12px;
   border-bottom: 1px solid #e0e0e0;
   background: #fafafa;
   flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  z-index: 10;
 }
 
 #status-row {
@@ -26,44 +29,89 @@ body {
   gap: 6px;
 }
 
-/* D-03: Status indicator dots */
+/* Status dots */
 .dot {
-  width: 8px;
-  height: 8px;
+  width: 8px; height: 8px;
   border-radius: 50%;
   display: inline-block;
   flex-shrink: 0;
+  background: #9ca3af;
 }
-.dot-green { background: #22c55e; }
-.dot-red   { background: #ef4444; }
+.dot-green  { background: #22c55e; }
+.dot-red    { background: #ef4444; }
+.dot-yellow { background: #eab308; }
 
-#status-text {
-  font-weight: 600;
-  font-size: 12px;
-}
-
-#action-count {
-  color: #6b7280;
-  font-size: 11px;
-  margin-left: auto;
+.dot.pulse { animation: pulse 1.5s ease-in-out infinite; }
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
 }
 
-/* Tab bar */
+#status-text { font-weight: 600; font-size: 12px; }
+#action-count { color: #6b7280; font-size: 11px; margin-left: auto; }
+
+/* ─── Header controls ─────────────────────────────────────────────────────── */
+#controls-row {
+  margin-top: 8px;
+  display: flex;
+  gap: 6px;
+}
+
+.btn-start {
+  flex: 1;
+  padding: 8px 12px;
+  font-size: 14px; font-weight: 600;
+  color: #fff; background: #16a34a;
+  border: none; border-radius: 6px;
+  cursor: pointer;
+}
+.btn-start:hover { background: #15803d; }
+.btn-start:disabled { background: #9ca3af; cursor: not-allowed; }
+
+.btn-stop {
+  flex: 1;
+  padding: 8px 12px;
+  font-size: 13px; font-weight: 600;
+  color: #fff; background: #dc2626;
+  border: none; border-radius: 6px;
+  cursor: pointer;
+}
+.btn-stop:hover { background: #b91c1c; }
+.btn-stop:disabled { background: #d1d5db; cursor: not-allowed; }
+
+.btn-pause {
+  padding: 8px 12px;
+  font-size: 13px; font-weight: 500;
+  color: #374151; background: transparent;
+  border: 1px solid #d1d5db; border-radius: 6px;
+  cursor: pointer;
+}
+.btn-pause:hover { background: #f3f4f6; }
+
+.btn-new {
+  padding: 8px 10px;
+  font-size: 13px; font-weight: 500;
+  color: #6b7280; background: transparent;
+  border: 1px solid #d1d5db; border-radius: 6px;
+  cursor: pointer;
+}
+.btn-new:hover { background: #f3f4f6; color: #374151; }
+
+.hidden { display: none !important; }
+
+/* ─── Tab bar ─────────────────────────────────────────────────────────────── */
 #tabs {
   display: flex;
   border-bottom: 1px solid #e0e0e0;
   background: #fafafa;
   flex-shrink: 0;
 }
-#tabs.hidden { display: none; }
 
 .tab {
   flex: 1;
   padding: 7px 0;
-  border: none;
-  background: none;
-  font-size: 12px;
-  font-weight: 500;
+  border: none; background: none;
+  font-size: 12px; font-weight: 500;
   color: #6b7280;
   cursor: pointer;
   border-bottom: 2px solid transparent;
@@ -76,7 +124,7 @@ body {
   font-weight: 600;
 }
 
-/* Tab content */
+/* ─── Tab content ─────────────────────────────────────────────────────────── */
 .tab-content {
   display: none;
   flex: 1;
@@ -85,11 +133,76 @@ body {
 }
 .tab-content.active { display: block; }
 
-#action-list {
-  list-style: none;
+#action-list { list-style: none; }
+
+#empty-msg {
+  padding: 32px 20px;
+  color: #9ca3af;
+  font-size: 13px;
+  text-align: center;
+  line-height: 1.6;
 }
 
-/* Steps toolbar */
+/* ─── Timeline entries (View B: human-readable) ───────────────────────────── */
+.action-entry {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 6px 12px;
+  border-bottom: 1px solid #f0f0f0;
+  font-size: 12px;
+}
+.action-entry:nth-child(even) { background: #fafbfc; }
+.action-entry:hover { background: #f3f4f6; }
+
+.action-icon {
+  font-size: 13px;
+  flex-shrink: 0;
+  width: 18px; text-align: center;
+  margin-top: 1px;
+}
+
+.action-info { flex: 1; min-width: 0; }
+
+.action-text {
+  font-size: 12px;
+  color: #1a1a1a;
+  display: block;
+  line-height: 1.4;
+}
+
+.action-details {
+  margin-top: 3px;
+}
+.action-details summary {
+  font-size: 10px;
+  color: #9ca3af;
+  cursor: pointer;
+  user-select: none;
+}
+.action-details summary:hover { color: #6b7280; }
+.action-details code {
+  display: block;
+  margin-top: 2px;
+  padding: 3px 6px;
+  background: #f3f4f6;
+  border-radius: 3px;
+  font-family: 'SFMono-Regular', Consolas, 'Courier New', monospace;
+  font-size: 10px;
+  color: #374151;
+  word-break: break-all;
+  line-height: 1.4;
+}
+
+.action-elapsed {
+  color: #9ca3af;
+  font-size: 11px;
+  flex-shrink: 0;
+  white-space: nowrap;
+  margin-top: 1px;
+}
+
+/* ─── Steps toolbar ───────────────────────────────────────────────────────── */
 #steps-toolbar {
   display: flex;
   gap: 6px;
@@ -97,94 +210,38 @@ body {
   border-bottom: 1px solid #e0e0e0;
   background: #fafafa;
 }
-
 #steps-toolbar button {
   padding: 4px 10px;
   border: 1px solid #d1d5db;
   border-radius: 4px;
   background: #fff;
-  font-size: 11px;
-  color: #374151;
+  font-size: 11px; color: #374151;
   cursor: pointer;
   transition: background 0.1s;
 }
 #steps-toolbar button:hover { background: #f3f4f6; }
 
-/* Steps tab */
-#steps-list {
-  list-style: none;
-  padding: 0;
-}
+/* ─── Steps list ──────────────────────────────────────────────────────────── */
+#steps-list { list-style: none; padding: 0; }
 
-/* Insert zone between items — visible hover target */
-.step-insert-zone {
-  height: 12px;
-  position: relative;
-  cursor: pointer;
-  transition: height 0.15s;
-}
-.step-insert-zone:hover {
-  height: 28px;
-}
-.step-insert-zone .insert-btn {
-  display: none;
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  z-index: 2;
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  border: 1px solid #d1d5db;
-  background: #fff;
-  color: #6b7280;
-  font-size: 15px;
-  line-height: 20px;
-  text-align: center;
-  cursor: pointer;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-  transition: background 0.1s, color 0.1s;
-}
-.step-insert-zone:hover .insert-btn { display: block; }
-.step-insert-zone .insert-btn:hover {
-  background: #1d4ed8;
-  color: #fff;
-  border-color: #1d4ed8;
-}
-/* Dashed line on hover */
-.step-insert-zone::after {
-  content: '';
-  display: none;
-  position: absolute;
-  left: 12px;
-  right: 12px;
-  top: 50%;
-  border-top: 1px dashed #93c5fd;
-}
-.step-insert-zone:hover::after { display: block; }
-
-/* Step item */
 .step-entry {
   padding: 7px 8px 7px 12px;
   border-bottom: 1px solid #f0f0f0;
-  font-size: 12px;
-  line-height: 1.5;
+  font-size: 12px; line-height: 1.5;
   display: flex;
   align-items: flex-start;
   gap: 6px;
   transition: background 0.1s, box-shadow 0.15s;
   cursor: default;
 }
-.step-entry:hover { background: #f9fafb; }
+.step-entry:nth-child(even) { background: #fafbfc; }
+.step-entry:hover { background: #f3f4f6; }
 .step-entry:hover .step-delete { opacity: 1; }
 
 /* Drag handle */
 .step-drag {
-  flex-shrink: 0;
-  cursor: grab;
-  color: #d1d5db;
-  font-size: 11px;
+  flex-shrink: 0; cursor: grab;
+  color: #d1d5db; font-size: 11px;
   padding: 2px 2px 2px 0;
   user-select: none;
   transition: color 0.1s;
@@ -193,220 +250,163 @@ body {
 .step-entry:active .step-drag { cursor: grabbing; }
 
 /* Drag states */
-.step-entry.dragging {
-  opacity: 0.4;
-  background: #f3f4f6;
-}
-.step-entry.drag-over-above {
-  box-shadow: inset 0 2px 0 0 #1d4ed8;
-}
-.step-entry.drag-over-below {
-  box-shadow: inset 0 -2px 0 0 #1d4ed8;
-}
+.step-entry.dragging { opacity: 0.4; background: #f3f4f6; }
+.step-entry.drag-over-above { box-shadow: inset 0 2px 0 0 #1d4ed8; }
+.step-entry.drag-over-below { box-shadow: inset 0 -2px 0 0 #1d4ed8; }
 
 .step-number {
-  color: #1d4ed8;
-  font-weight: 600;
-  font-size: 11px;
-  flex-shrink: 0;
-  min-width: 18px;
-  padding-top: 2px;
+  color: #1d4ed8; font-weight: 600; font-size: 11px;
+  flex-shrink: 0; min-width: 18px; padding-top: 2px;
 }
-
 .step-text {
-  flex: 1;
-  min-width: 0;
-  color: #374151;
-  border: 1px solid transparent;
-  border-radius: 3px;
-  padding: 1px 4px;
-  margin: -1px -4px;
+  flex: 1; min-width: 0; color: #374151;
+  border: 1px solid transparent; border-radius: 3px;
+  padding: 1px 4px; margin: -1px -4px;
   outline: none;
   transition: border-color 0.15s, background 0.15s;
 }
 .step-text:focus {
-  border-color: #93c5fd;
-  background: #eff6ff;
+  border-color: #93c5fd; background: #eff6ff;
 }
-
 .step-time {
-  color: #9ca3af;
-  font-size: 11px;
-  flex-shrink: 0;
-  padding-top: 2px;
+  color: #9ca3af; font-size: 11px;
+  flex-shrink: 0; padding-top: 2px;
 }
-
 .step-delete {
-  opacity: 0;
-  border: none;
-  background: none;
-  cursor: pointer;
-  font-size: 12px;
-  padding: 1px 4px;
-  color: #d1d5db;
-  border-radius: 3px;
+  opacity: 0; border: none; background: none;
+  cursor: pointer; font-size: 12px;
+  padding: 1px 4px; color: #d1d5db;
+  border-radius: 3px; flex-shrink: 0;
   transition: opacity 0.1s, color 0.1s, background 0.1s;
-  flex-shrink: 0;
 }
-.step-delete:hover {
-  color: #ef4444;
-  background: #fef2f2;
-}
+.step-delete:hover { color: #ef4444; background: #fef2f2; }
 
-/* Each action entry: icon + info + elapsed */
-.action-entry {
-  display: flex;
-  align-items: flex-start;
-  gap: 6px;
-  padding: 5px 12px;
-  border-bottom: 1px solid #f0f0f0;
-  font-size: 12px;
+/* ─── Insert zone & step editor card ──────────────────────────────────────── */
+.step-insert-zone {
+  height: 8px;
+  position: relative;
+  cursor: pointer;
+  transition: height 0.15s;
 }
-.action-entry:hover { background: #f9fafb; }
+.step-insert-zone:hover { height: 24px; }
 
-.action-icon {
-  font-size: 13px;
-  flex-shrink: 0;
-  width: 18px;
-  text-align: center;
-  margin-top: 1px;
+.step-insert-zone .insert-btn {
+  display: none;
+  position: absolute;
+  left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 2;
+  padding: 1px 10px;
+  border-radius: 10px;
+  border: 1px solid #d1d5db;
+  background: #fff; color: #6b7280;
+  font-size: 10px; white-space: nowrap;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  transition: background 0.1s, color 0.1s;
 }
-
-.action-info {
-  flex: 1;
-  min-width: 0;
+.step-insert-zone:hover .insert-btn { display: block; }
+.step-insert-zone .insert-btn:hover {
+  background: #1d4ed8; color: #fff; border-color: #1d4ed8;
 }
+.step-insert-zone::after {
+  content: ''; display: none; position: absolute;
+  left: 12px; right: 12px; top: 50%;
+  border-top: 1px dashed #c7d2fe;
+}
+.step-insert-zone:hover::after { display: block; }
 
-/* D-01: Selector in monospace */
-.action-selector {
-  font-family: 'SFMono-Regular', Consolas, 'Courier New', monospace;
-  font-size: 11px;
-  color: #374151;
+/* Step editor card (shown when inserting a new step) */
+.step-editor-card {
+  margin: 4px 12px;
+  padding: 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: #f9fafb;
+}
+.step-editor-card label {
   display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font-size: 10px; font-weight: 600;
+  color: #6b7280; text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 3px;
 }
-
-/* Detail line: text content, tag, role */
-.action-detail {
-  font-size: 10px;
-  color: #6b7280;
-  margin-top: 1px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.action-elapsed {
-  color: #9ca3af;
-  font-size: 11px;
-  flex-shrink: 0;
-  white-space: nowrap;
-}
-
-#empty-msg {
-  padding: 24px 12px;
-  color: #9ca3af;
-  font-size: 12px;
-  text-align: center;
-}
-
-/* D-04: Sticky footer always visible */
-#footer {
-  padding: 10px 12px;
-  border-top: 1px solid #e0e0e0;
-  background: #fafafa;
-  flex-shrink: 0;
-}
-
-#save-btn {
-  flex: 1;
-  padding: 8px 0;
-  background: #1d4ed8;
-  color: #ffffff;
-  border: none;
-  border-radius: 6px;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.15s;
-}
-#save-btn:hover:not(:disabled) { background: #1e40af; }
-#save-btn:disabled {
-  background: #d1d5db;
-  color: #9ca3af;
-  cursor: not-allowed;
-}
-
-.footer-secondary {
-  width: 40px;
-  padding: 8px 0;
-  background: #374151;
-  color: #fff;
-  border: none;
-  border-radius: 6px;
-  font-size: 13px;
-  cursor: pointer;
-  transition: background 0.15s;
-}
-.footer-secondary:hover { background: #1f2937; }
-.footer-secondary.hidden { display: none; }
-
-/* Steps footer */
-#footer-steps {
-  padding: 10px 12px;
-  border-top: 1px solid #e0e0e0;
-  background: #fafafa;
-  flex-shrink: 0;
-}
-#footer-steps.hidden { display: none; }
-
-.footer-row {
-  display: flex;
-  gap: 8px;
-}
-
-#copy-btn, #download-btn {
-  flex: 1;
-  padding: 8px 0;
-  border: none;
-  border-radius: 6px;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.15s;
-}
-
-#copy-btn {
-  background: #1d4ed8;
-  color: #fff;
-}
-#copy-btn:hover { background: #1e40af; }
-#copy-btn.copied {
-  background: #22c55e;
-}
-
-#download-btn {
-  background: #374151;
-  color: #fff;
-}
-#download-btn:hover { background: #1f2937; }
-
-/* Start button (standalone-mode activation) */
-#controls-row { margin-top: 8px; }
-.btn-start {
+.step-editor-card select,
+.step-editor-card input[type="text"] {
   width: 100%;
-  padding: 8px 12px;
-  font-size: 14px;
-  font-weight: 600;
-  color: #fff;
-  background: #16a34a;
-  border: none;
+  padding: 6px 8px;
+  border: 1px solid #d1d5db;
   border-radius: 4px;
-  cursor: pointer;
+  font-size: 12px;
+  margin-bottom: 8px;
+  background: #fff;
 }
-.btn-start:hover { background: #15803d; }
-.btn-start:disabled { background: #9ca3af; cursor: not-allowed; }
-.btn-start.hidden { display: none; }
-#save-btn.hidden { display: none; }
+.step-editor-card select:focus,
+.step-editor-card input[type="text"]:focus {
+  outline: none;
+  border-color: #93c5fd;
+  box-shadow: 0 0 0 2px rgba(147,197,253,0.3);
+}
+.step-editor-actions {
+  display: flex; gap: 6px; justify-content: flex-end;
+}
+.step-editor-actions button {
+  padding: 4px 12px; border-radius: 4px;
+  font-size: 11px; font-weight: 500; cursor: pointer;
+}
+.step-editor-save {
+  background: #1d4ed8; color: #fff; border: none;
+}
+.step-editor-save:hover { background: #1e40af; }
+.step-editor-cancel {
+  background: transparent; color: #6b7280;
+  border: 1px solid #d1d5db;
+}
+.step-editor-cancel:hover { background: #f3f4f6; }
+
+/* ─── Footer (View C: edit/export) ────────────────────────────────────────── */
+#footer-edit {
+  padding: 10px 12px;
+  border-top: 1px solid #e0e0e0;
+  background: #fafafa;
+  flex-shrink: 0;
+}
+
+.footer-row { display: flex; gap: 8px; }
+
+.btn-primary {
+  flex: 1;
+  padding: 8px 0;
+  background: #1d4ed8; color: #fff;
+  border: none; border-radius: 6px;
+  font-size: 13px; font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.btn-primary:hover { background: #1e40af; }
+
+.btn-ghost {
+  flex: 1;
+  padding: 8px 0;
+  background: transparent; color: #374151;
+  border: 1px solid #d1d5db; border-radius: 6px;
+  font-size: 13px; font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.btn-ghost:hover { background: #f3f4f6; }
+
+/* ─── Toast ───────────────────────────────────────────────────────────────── */
+.toast {
+  position: fixed;
+  bottom: 70px; left: 50%;
+  transform: translateX(-50%);
+  padding: 8px 20px;
+  background: #22c55e; color: #fff;
+  border-radius: 6px;
+  font-size: 13px; font-weight: 600;
+  z-index: 100;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  transition: opacity 0.3s;
+}
+.toast.hidden { opacity: 0; pointer-events: none; }

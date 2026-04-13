@@ -52,6 +52,9 @@ function setState(state) {
   isRecording = (state === 'recording' || state === 'paused');
   isPaused = (state === 'paused');
 
+  // Solidify the dashed flow-line track when recording has stopped (v3.0 design).
+  document.body.classList.toggle('flow-solid', state === 'stopped');
+
   // Hide all controls, then selectively show
   startBtn.classList.add('hidden');
   stopBtn.classList.add('hidden');
@@ -104,57 +107,60 @@ function escapeHtml(str) {
   return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
-const ACTION_ICONS = { click:'👆', input:'✏️', scroll:'↕️', navigate:'→', submit:'↗' };
-
 function formatTime(ms) {
   return ms < 1000 ? ms + 'ms' : (ms / 1000).toFixed(1) + 's';
 }
 
-// Wrap leading verb in a colored span and the trailing target (selector/URL/
-// element description) in a monospace <code class="target"> per DESIGN.md SSOT.
-// Clicked → indigo, Typed → amber, Navigated → emerald.
-const VERB_CLASSES = [
-  { prefix: 'Clicked',   cls: 'verb-click' },
-  { prefix: 'Typed',     cls: 'verb-type'  },
-  { prefix: 'Navigated', cls: 'verb-nav'   },
-  { prefix: 'Submitted', cls: 'verb-click' },
-  { prefix: 'Scrolled',  cls: 'verb-scroll'},
-];
-function wrapVerbHtml(text) {
-  for (const { prefix, cls } of VERB_CLASSES) {
-    if (text.startsWith(prefix)) {
-      const rest = text.slice(prefix.length).replace(/^\s+/, '');
-      return '<span class="verb ' + cls + '">' + escapeHtml(prefix) + '</span>' +
-             (rest ? '<code class="target">' + escapeHtml(rest) + '</code>' : '');
-    }
-  }
-  return escapeHtml(text);
+// Map action type → CSS color class for the timeline node dot.
+// Driven by action.type (not verb-text parsing) so it stays robust under i18n.
+const NODE_DOT_CLASS = {
+  click:    'node-dot-click',
+  input:    'node-dot-type',
+  navigate: 'node-dot-nav',
+  scroll:   'node-dot-scroll',
+  submit:   'node-dot-submit',
+};
+function nodeDotClassFor(type) {
+  return NODE_DOT_CLASS[type] || 'node-dot';
 }
 
-// ─── Timeline entries (human-readable) ───────────────────────────────────────
+// ─── Timeline entries (node-item per DESIGN.md v3.0) ─────────────────────────
 
 function appendAction(action) {
   if (emptyMsg) emptyMsg.style.display = 'none';
   allActions.push(action);
 
+  const { verb, target } = describeActionParts(action);
+  const fullText = verb + ' ' + target;
+
   const li = document.createElement('li');
-  li.className = 'action-entry';
+  li.className = 'node-item';
+  li.title = fullText;
 
-  // Human-readable description as primary text
-  const humanText = describeAction(action);
-  const rawSelector = action.selector || action.url || '';
-  const detailsHtml = rawSelector
-    ? '<details class="action-details"><summary>Details</summary><code>' + escapeHtml(rawSelector) + '</code></details>'
-    : '';
+  const dot = document.createElement('div');
+  dot.className = 'node-dot ' + nodeDotClassFor(action.type);
 
-  li.title = humanText;  // native tooltip shows full text on hover
-  li.innerHTML =
-    '<span class="action-icon">' + (ACTION_ICONS[action.type] || '?') + '</span>' +
-    '<div class="action-info">' +
-      '<span class="action-text">' + wrapVerbHtml(humanText) + '</span>' +
-      detailsHtml +
-    '</div>' +
-    '<span class="action-elapsed">' + formatTime(action.elapsed) + '</span>';
+  const content = document.createElement('div');
+  content.className = 'node-content';
+
+  const actionEl = document.createElement('div');
+  actionEl.className = 'node-action';
+  actionEl.textContent = verb;
+
+  const targetEl = document.createElement('code');
+  targetEl.className = 'node-target';
+  targetEl.textContent = target;   // '>_ ' prefix is added by CSS ::before — never hardcode here
+
+  content.appendChild(actionEl);
+  content.appendChild(targetEl);
+
+  const elapsedEl = document.createElement('div');
+  elapsedEl.className = 'node-elapsed';
+  elapsedEl.textContent = formatTime(action.elapsed);
+
+  li.appendChild(dot);
+  li.appendChild(content);
+  li.appendChild(elapsedEl);
 
   actionList.appendChild(li);
   li.scrollIntoView({ behavior: 'smooth', block: 'end' });
@@ -191,16 +197,33 @@ function describeElement(action) {
   return parts.length ? parts.join(' ') : action.selector;
 }
 
-function describeAction(action) {
+function describeActionParts(action) {
   const el = describeElement(action);
   switch (action.type) {
-    case 'click': return 'Clicked ' + el;
-    case 'input': return action.value === '***' ? 'Typed a password into ' + el : 'Typed "' + action.value + '" into ' + el;
-    case 'scroll': return 'Scrolled to y=' + ((action.value || '0,0').split(',')[1] || '0') + 'px';
-    case 'submit': return 'Submitted form ' + el;
-    case 'navigate': return 'Navigated to ' + action.url;
-    default: return action.type + ' on ' + el;
+    case 'click':
+      return { verb: 'Clicked', target: el };
+    case 'input':
+      return {
+        verb: 'Typed',
+        target: (action.value === '***')
+          ? '<password> into ' + el
+          : '"' + action.value + '" into ' + el,
+      };
+    case 'scroll':
+      return { verb: 'Scrolled', target: 'y=' + ((action.value || '0,0').split(',')[1] || '0') + 'px' };
+    case 'submit':
+      return { verb: 'Submitted', target: 'form ' + el };
+    case 'navigate':
+      return { verb: 'Navigated', target: action.url };
+    default:
+      return { verb: action.type, target: 'on ' + el };
   }
+}
+
+// Compat shim — single-string form for getStepsText, tooltips, and any external usage.
+function describeAction(action) {
+  const p = describeActionParts(action);
+  return p.verb + ' ' + p.target;
 }
 
 // ─── Steps editor with drag & drop ──────────────────────────────────────────
@@ -215,58 +238,87 @@ function createInsertZone(beforeIndex) {
   btn.textContent = '+ Add note';
   btn.title = 'Add a human-readable note';
   btn.addEventListener('click', () => {
-    // Insert an empty step and focus it for free-form note input
+    // Insert an empty step and focus its action line for free-form note input
     const li = createStepElement('', '', 0);
     const newZone = createInsertZone(0);
     zone.after(li);
     li.after(newZone);
-    renumberSteps();
-    const textEl = li.querySelector('.step-text');
-    textEl.focus();
-    // Place caret inside the empty editable span
-    const range = document.createRange();
-    range.selectNodeContents(textEl);
-    window.getSelection().removeAllRanges();
-    window.getSelection().addRange(range);
+    const actionEl = li.querySelector('.node-action');
+    if (actionEl) {
+      actionEl.focus();
+      const range = document.createRange();
+      range.selectNodeContents(actionEl);
+      window.getSelection().removeAllRanges();
+      window.getSelection().addRange(range);
+    }
   });
   zone.appendChild(btn);
   return zone;
 }
 
+// Verb-string → action.type guess (used to color-code the step-editor node dot
+// when we only have the round-tripped "Verb target..." string available).
+const VERB_TO_TYPE = {
+  Clicked: 'click',
+  Typed: 'input',
+  Navigated: 'navigate',
+  Scrolled: 'scroll',
+  Submitted: 'submit',
+};
+
 function createStepElement(text, time, index) {
   const li = document.createElement('li');
-  li.className = 'step-entry';
+  li.className = 'node-item step-node';
   li.draggable = true;
+  li.title = text;
 
+  // Drag handle — sits to the left of the dashed track via CSS positioning
   const drag = document.createElement('span');
-  drag.className = 'step-drag';
+  drag.className = 'node-drag';
   drag.textContent = '⠿';
   drag.title = 'Drag to reorder';
 
-  const numSpan = document.createElement('span');
-  numSpan.className = 'step-number';
-  numSpan.textContent = (index + 1) + '.';
+  // Parse the incoming "Verb target..." string back into parts
+  // (it comes from describeAction which is now `verb + ' ' + target`).
+  const firstSpace = text.indexOf(' ');
+  const verb   = firstSpace === -1 ? text : text.slice(0, firstSpace);
+  const target = firstSpace === -1 ? ''   : text.slice(firstSpace + 1);
 
-  const textSpan = document.createElement('span');
-  textSpan.className = 'step-text';
-  textSpan.contentEditable = 'true';
-  textSpan.innerHTML = wrapVerbHtml(text);  // colored verb, plain rest
-  textSpan.title = text;  // hover to read full text when clamped
-  li.title = text;        // also on the <li> per SSOT
-  textSpan.addEventListener('mousedown', (e) => e.stopPropagation());
-  // Keep tooltip in sync when user edits the step text
-  textSpan.addEventListener('input', () => {
-    const current = textSpan.textContent;
-    textSpan.title = current;
-    li.title = current;
+  const dot = document.createElement('div');
+  dot.className = 'node-dot ' + nodeDotClassFor(VERB_TO_TYPE[verb] || 'click');
+
+  const content = document.createElement('div');
+  content.className = 'node-content';
+
+  // Verb line — contentEditable
+  const actionEl = document.createElement('div');
+  actionEl.className = 'node-action';
+  actionEl.contentEditable = 'true';
+  actionEl.textContent = verb;
+  actionEl.addEventListener('mousedown', (e) => e.stopPropagation()); // don't fight drag
+  actionEl.addEventListener('input', () => {
+    li.title = (actionEl.textContent + ' ' + targetEl.textContent).trim();
   });
 
+  // Target line — contentEditable; CSS ::before adds the '>_ ' prefix visually
+  const targetEl = document.createElement('code');
+  targetEl.className = 'node-target';
+  targetEl.contentEditable = 'true';
+  targetEl.textContent = target;
+  targetEl.addEventListener('mousedown', (e) => e.stopPropagation());
+  targetEl.addEventListener('input', () => {
+    li.title = (actionEl.textContent + ' ' + targetEl.textContent).trim();
+  });
+
+  content.appendChild(actionEl);
+  content.appendChild(targetEl);
+
   const timeSpan = document.createElement('span');
-  timeSpan.className = 'step-time';
+  timeSpan.className = 'node-elapsed';
   timeSpan.textContent = time;
 
   const delBtn = document.createElement('button');
-  delBtn.className = 'step-delete';
+  delBtn.className = 'node-delete';
   delBtn.textContent = '✕';
   delBtn.title = 'Remove step';
   delBtn.addEventListener('click', () => {
@@ -274,16 +326,15 @@ function createStepElement(text, time, index) {
       li.previousElementSibling.remove();
     }
     li.remove();
-    renumberSteps();
   });
 
   li.appendChild(drag);
-  li.appendChild(numSpan);
-  li.appendChild(textSpan);
+  li.appendChild(dot);
+  li.appendChild(content);
   li.appendChild(timeSpan);
   li.appendChild(delBtn);
 
-  // Drag events
+  // Drag events — same logic as before, just no renumbering (numbers removed in v3.0)
   li.addEventListener('dragstart', (e) => {
     draggedEl = li;
     li.classList.add('dragging');
@@ -294,7 +345,6 @@ function createStepElement(text, time, index) {
     li.classList.remove('dragging');
     clearAllDragOver();
     draggedEl = null;
-    renumberSteps();
   });
   li.addEventListener('dragover', (e) => {
     e.preventDefault();
@@ -339,7 +389,6 @@ function createStepElement(text, time, index) {
       if (hasDragZone) stepsList.insertBefore(dragZone, draggedEl);
     }
     clearAllDragOver();
-    renumberSteps();
   });
 
   return li;
@@ -352,11 +401,8 @@ function clearAllDragOver() {
 }
 
 function renumberSteps() {
-  let num = 1;
-  stepsList.querySelectorAll('.step-entry').forEach((li) => {
-    li.querySelector('.step-number').textContent = num + '.';
-    num++;
-  });
+  /* Step numbers were removed in v3.0 design (high-density node layout per SSOT).
+     Kept as a no-op so existing call sites don't throw. */
 }
 
 function buildStepsView() {
@@ -388,11 +434,11 @@ resetBtn.addEventListener('click', () => {
 
 function getStepsText() {
   const lines = [];
-  stepsList.querySelectorAll('.step-entry').forEach((li) => {
-    const num = li.querySelector('.step-number').textContent;
-    const text = li.querySelector('.step-text').textContent.trim();
-    const time = li.querySelector('.step-time').textContent;
-    lines.push(num + ' ' + text + (time ? '  (' + time + ')' : ''));
+  stepsList.querySelectorAll('.node-item.step-node').forEach((li, idx) => {
+    const verb   = li.querySelector('.node-action').textContent.trim();
+    const target = li.querySelector('.node-target').textContent.trim();
+    const time   = li.querySelector('.node-elapsed').textContent;
+    lines.push((idx + 1) + '. ' + verb + ' ' + target + (time ? '  (' + time + ')' : ''));
   });
   return lines.join('\n');
 }

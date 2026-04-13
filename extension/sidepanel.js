@@ -459,36 +459,26 @@ pauseBtn.addEventListener('click', () => {
   }
 });
 
-// ─── New button (discard and restart) ────────────────────────────────────────
+// ─── New button (discard current session and return to idle) ────────────────
 
 newBtn.addEventListener('click', async () => {
-  newBtn.disabled = true;
-  try {
-    const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
-    if (!tab || !tab.id || !tab.url) throw new Error('No active tab');
-    if (!/^https?:/.test(tab.url)) throw new Error('Can only record http(s) pages');
-    const sessionName = deriveSessionName(tab.url);
-    // Reset in-memory state
-    allActions.length = 0;
-    originalSteps = [];
-    capturedCount = 0;
-    actionCount.textContent = '(0 actions)';
-    actionList.innerHTML = '';
-    stepsList.innerHTML = '';
-    tabsNav.classList.add('hidden');
-    tabTimeline.classList.add('active');
-    tabTestSteps.classList.remove('active');
-    if (emptyMsg) emptyMsg.style.display = '';
-    currentSessionName = sessionName;
-    setState('recording');
-    await chrome.runtime.sendMessage({ type: 'start-recording', data: { tabId: tab.id, sessionName, url: tab.url } });
-  } catch (err) {
-    console.error('[rec panel] start failed:', err);
-    statusText.textContent = 'Error: ' + err.message;
-    setState('idle');
-  } finally {
-    newBtn.disabled = false;
+  // If still recording, tell background to clear session so content script stops
+  if (isRecording) {
+    chrome.runtime.sendMessage({ type: 'discard' }).catch(() => {});
   }
+  // Reset in-memory + UI state back to initial blank
+  allActions.length = 0;
+  originalSteps = [];
+  capturedCount = 0;
+  currentSessionName = null;
+  actionCount.textContent = '(0 actions)';
+  actionList.innerHTML = '';
+  stepsList.innerHTML = '';
+  tabsNav.classList.add('hidden');
+  tabTimeline.classList.add('active');
+  tabTestSteps.classList.remove('active');
+  if (emptyMsg) emptyMsg.style.display = '';
+  setState('idle');
 });
 
 // ─── Start recording button ─────────────────────────────────────────────────

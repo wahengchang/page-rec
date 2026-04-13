@@ -109,7 +109,14 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     return false; // fire-and-forget, no sendResponse needed
   }
 
-  // ── Stop & Save from side panel (local-only: chrome.storage.local + chrome.downloads) ──
+  // ── Discard from side panel: clear session without saving ──
+  if (msg.type === 'discard') {
+    chrome.storage.session.clear().catch(() => {});
+    return false;
+  }
+
+  // ── Stop from side panel: persist to chrome.storage.local, no auto-download ──
+  // User exports explicitly via "Copy Code" or "Download .spec.js" in the panel.
   if (msg.type === 'save') {
     chrome.storage.session.get(['actions', 'sessionName']).then(async ({ actions = [], sessionName }) => {
       if (!sessionName) {
@@ -118,28 +125,19 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       }
       const recording = { name: sessionName, timestamp: new Date().toISOString(), actions };
       try {
-        // 1. Append to chrome.storage.local['recordings'] (persistent history)
         const { recordings = [] } = await chrome.storage.local.get(['recordings']);
         recordings.push(recording);
         await chrome.storage.local.set({ recordings });
-
-        // 2. Trigger JSON download via chrome.downloads
-        // Service worker has no DOM → use a data: URL (URL.createObjectURL is unreliable here)
-        const json = JSON.stringify(recording, null, 2);
-        const dataUrl = 'data:application/json;charset=utf-8;base64,' + btoa(unescape(encodeURIComponent(json)));
-        await chrome.downloads.download({ url: dataUrl, filename: sessionName + '.json', saveAs: false });
-
         chrome.runtime.sendMessage({ type: 'save-complete' }).catch(() => {});
       } catch (err) {
         console.error('[rec] Save failed:', err);
         chrome.runtime.sendMessage({ type: 'save-complete', error: String(err) }).catch(() => {});
       } finally {
-        // Clear session state whether success or failure
         await chrome.storage.session.clear();
       }
     });
 
-    return false; // async work is internal; no sendResponse
+    return false;
   }
 });
 

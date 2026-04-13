@@ -183,62 +183,25 @@ function createInsertZone(beforeIndex) {
   zone.className = 'step-insert-zone';
   const btn = document.createElement('button');
   btn.className = 'insert-btn';
-  btn.textContent = '+ Add step';
-  btn.title = 'Insert step here';
+  btn.textContent = '+ Add note';
+  btn.title = 'Add a human-readable note';
   btn.addEventListener('click', () => {
-    // Replace zone with editor card
-    const card = createStepEditorCard(zone);
-    zone.replaceWith(card);
+    // Insert an empty step and focus it for free-form note input
+    const li = createStepElement('', '', 0);
+    const newZone = createInsertZone(0);
+    zone.after(li);
+    li.after(newZone);
+    renumberSteps();
+    const textEl = li.querySelector('.step-text');
+    textEl.focus();
+    // Place caret inside the empty editable span
+    const range = document.createRange();
+    range.selectNodeContents(textEl);
+    window.getSelection().removeAllRanges();
+    window.getSelection().addRange(range);
   });
   zone.appendChild(btn);
   return zone;
-}
-
-function createStepEditorCard(replacedZone) {
-  const card = document.createElement('div');
-  card.className = 'step-editor-card';
-
-  card.innerHTML =
-    '<label>Action</label>' +
-    '<select class="editor-action">' +
-      '<option value="click">Click</option>' +
-      '<option value="fill">Fill / Type</option>' +
-      '<option value="navigate">Navigate</option>' +
-      '<option value="assert">Assert</option>' +
-    '</select>' +
-    '<label>Target / Value</label>' +
-    '<input type="text" class="editor-target" placeholder="e.g. #submit-btn or https://example.com">' +
-    '<div class="step-editor-actions">' +
-      '<button class="step-editor-cancel">Cancel</button>' +
-      '<button class="step-editor-save">✓ Save</button>' +
-    '</div>';
-
-  card.querySelector('.step-editor-cancel').addEventListener('click', () => {
-    // Restore the insert zone
-    const zone = createInsertZone(0);
-    card.replaceWith(zone);
-  });
-
-  card.querySelector('.step-editor-save').addEventListener('click', () => {
-    const actionType = card.querySelector('.editor-action').value;
-    const target = card.querySelector('.editor-target').value.trim();
-    if (!target) { card.querySelector('.editor-target').focus(); return; }
-
-    const labels = { click: 'Click on', fill: 'Type into', navigate: 'Navigate to', assert: 'Assert on' };
-    const text = (labels[actionType] || actionType) + ' ' + target;
-
-    const li = createStepElement(text, '', 0);
-    const zone = createInsertZone(0);
-    card.replaceWith(zone);
-    zone.after(li);
-    const newZone = createInsertZone(0);
-    li.after(newZone);
-    renumberSteps();
-  });
-
-  // Auto-focus the target input
-  setTimeout(() => card.querySelector('.editor-target').focus(), 50);
-  return card;
 }
 
 function createStepElement(text, time, index) {

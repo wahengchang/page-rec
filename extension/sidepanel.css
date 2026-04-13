@@ -14,7 +14,7 @@ body {
 
 /* ─── Header ──────────────────────────────────────────────────────────────── */
 #header {
-  padding: 10px 12px;
+  padding: 8px 12px;
   border-bottom: 1px solid #e0e0e0;
   background: #fafafa;
   flex-shrink: 0;
@@ -50,12 +50,27 @@ body {
 #status-text { font-weight: 600; font-size: 12px; }
 #action-count { color: #6b7280; font-size: 11px; margin-left: auto; }
 
-/* ─── Header controls ─────────────────────────────────────────────────────── */
+/* Prominent "▶ New Record" button floated right in the status row.
+   Solid green fill echoes the big "Start recording" button so the affordance
+   to begin a new session is obvious at a glance. */
+.btn-new {
+  padding: 3px 10px;
+  font-size: 11px; font-weight: 600;
+  color: #fff; background: #16a34a;
+  border: none; border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.1s, transform 0.1s;
+}
+.btn-new:hover { background: #15803d; }
+.btn-new:active { transform: scale(0.97); }
+
+/* ─── Header controls (only visible during idle/recording) ────────────────── */
 #controls-row {
   margin-top: 8px;
   display: flex;
   gap: 6px;
 }
+#controls-row:empty, #controls-row.hidden { display: none; }
 
 .btn-start {
   flex: 1;
@@ -80,7 +95,7 @@ body {
 .btn-stop:disabled { background: #d1d5db; cursor: not-allowed; }
 
 .btn-pause {
-  padding: 8px 12px;
+  padding: 8px 14px;
   font-size: 13px; font-weight: 500;
   color: #374151; background: transparent;
   border: 1px solid #d1d5db; border-radius: 6px;
@@ -88,28 +103,19 @@ body {
 }
 .btn-pause:hover { background: #f3f4f6; }
 
-.btn-new {
-  padding: 8px 10px;
-  font-size: 13px; font-weight: 500;
-  color: #6b7280; background: transparent;
-  border: 1px solid #d1d5db; border-radius: 6px;
-  cursor: pointer;
-}
-.btn-new:hover { background: #f3f4f6; color: #374151; }
-
 .hidden { display: none !important; }
 
 /* ─── Tab bar ─────────────────────────────────────────────────────────────── */
 #tabs {
   display: flex;
+  align-items: stretch;
   border-bottom: 1px solid #e0e0e0;
   background: #fafafa;
   flex-shrink: 0;
 }
 
 .tab {
-  flex: 1;
-  padding: 7px 0;
+  padding: 7px 14px;
   border: none; background: none;
   font-size: 12px; font-weight: 500;
   color: #6b7280;
@@ -123,6 +129,20 @@ body {
   border-bottom-color: #1d4ed8;
   font-weight: 600;
 }
+
+/* Tab-bar floating action (Reset Edits) */
+.tab-action {
+  margin-left: auto;
+  align-self: center;
+  padding: 3px 10px;
+  margin-right: 8px;
+  font-size: 11px; font-weight: 500;
+  color: #6b7280; background: transparent;
+  border: 1px solid #d1d5db; border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.1s, color 0.1s;
+}
+.tab-action:hover { background: #fff; color: #1d4ed8; border-color: #1d4ed8; }
 
 /* ─── Tab content ─────────────────────────────────────────────────────────── */
 .tab-content {
@@ -143,7 +163,7 @@ body {
   line-height: 1.6;
 }
 
-/* ─── Timeline entries (View B: human-readable) ───────────────────────────── */
+/* ─── Timeline entries (human-readable) ───────────────────────────────────── */
 .action-entry {
   display: flex;
   align-items: flex-start;
@@ -164,16 +184,21 @@ body {
 
 .action-info { flex: 1; min-width: 0; }
 
+/* Line-clamp long strings to 2 lines; hover/title shows full text */
 .action-text {
   font-size: 12px;
   color: #1a1a1a;
-  display: block;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  text-overflow: ellipsis;
   line-height: 1.4;
+  word-break: break-word;
 }
 
-.action-details {
-  margin-top: 3px;
-}
+.action-details { margin-top: 3px; }
 .action-details summary {
   font-size: 10px;
   color: #9ca3af;
@@ -201,25 +226,6 @@ body {
   white-space: nowrap;
   margin-top: 1px;
 }
-
-/* ─── Steps toolbar ───────────────────────────────────────────────────────── */
-#steps-toolbar {
-  display: flex;
-  gap: 6px;
-  padding: 6px 12px;
-  border-bottom: 1px solid #e0e0e0;
-  background: #fafafa;
-}
-#steps-toolbar button {
-  padding: 4px 10px;
-  border: 1px solid #d1d5db;
-  border-radius: 4px;
-  background: #fff;
-  font-size: 11px; color: #374151;
-  cursor: pointer;
-  transition: background 0.1s;
-}
-#steps-toolbar button:hover { background: #f3f4f6; }
 
 /* ─── Steps list ──────────────────────────────────────────────────────────── */
 #steps-list { list-style: none; padding: 0; }
@@ -258,16 +264,31 @@ body {
   color: #1d4ed8; font-weight: 600; font-size: 11px;
   flex-shrink: 0; min-width: 18px; padding-top: 2px;
 }
+
+/* Step text — clamp to 2 lines when not focused; expand on focus for editing */
 .step-text {
   flex: 1; min-width: 0; color: #374151;
   border: 1px solid transparent; border-radius: 3px;
   padding: 1px 4px; margin: -1px -4px;
   outline: none;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  word-break: break-word;
   transition: border-color 0.15s, background 0.15s;
 }
 .step-text:focus {
-  border-color: #93c5fd; background: #eff6ff;
+  display: block;
+  -webkit-line-clamp: unset;
+  line-clamp: unset;
+  overflow: visible;
+  border-color: #93c5fd;
+  background: #eff6ff;
 }
+
 .step-time {
   color: #9ca3af; font-size: 11px;
   flex-shrink: 0; padding-top: 2px;
@@ -281,7 +302,7 @@ body {
 }
 .step-delete:hover { color: #ef4444; background: #fef2f2; }
 
-/* ─── Insert zone & step editor card ──────────────────────────────────────── */
+/* ─── Insert zone (+ Add note) ────────────────────────────────────────────── */
 .step-insert-zone {
   height: 8px;
   position: relative;
@@ -316,37 +337,39 @@ body {
 }
 .step-insert-zone:hover::after { display: block; }
 
-/* ─── Footer (View C: edit/export) ────────────────────────────────────────── */
+/* ─── Footer (View C: edit/export) — slim bar, Copy dominant ─── */
 #footer-edit {
-  padding: 10px 12px;
+  padding: 4px 8px;
   border-top: 1px solid #e0e0e0;
   background: #fafafa;
   flex-shrink: 0;
 }
 
-.footer-row { display: flex; gap: 8px; }
+.footer-row { display: flex; gap: 6px; align-items: stretch; }
 
 .btn-primary {
   flex: 1;
-  padding: 8px 0;
+  padding: 5px 0;
   background: #1d4ed8; color: #fff;
-  border: none; border-radius: 6px;
+  border: none; border-radius: 4px;
   font-size: 13px; font-weight: 600;
   cursor: pointer;
   transition: background 0.15s;
 }
 .btn-primary:hover { background: #1e40af; }
 
-.btn-ghost {
-  flex: 1;
-  padding: 8px 0;
+/* Explicit secondary download button — labeled with file extension */
+.btn-icon {
+  padding: 5px 10px;
   background: transparent; color: #374151;
-  border: 1px solid #d1d5db; border-radius: 6px;
-  font-size: 13px; font-weight: 500;
+  border: 1px solid #d1d5db; border-radius: 4px;
+  font-size: 12px; font-weight: 500;
   cursor: pointer;
-  transition: background 0.15s;
+  flex-shrink: 0;
+  white-space: nowrap;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
-.btn-ghost:hover { background: #f3f4f6; }
+.btn-icon:hover { background: #fff; color: #1d4ed8; border-color: #1d4ed8; }
 
 /* ─── Toast ───────────────────────────────────────────────────────────────── */
 .toast {

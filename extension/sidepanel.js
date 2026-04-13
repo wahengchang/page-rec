@@ -17,6 +17,7 @@ const startBtn       = document.getElementById('start-btn');
 const stopBtn        = document.getElementById('stop-btn');
 const pauseBtn       = document.getElementById('pause-btn');
 const newBtn         = document.getElementById('new-btn');
+const controlsRow    = document.getElementById('controls-row');
 const footerEdit     = document.getElementById('footer-edit');
 const copyCodeBtn    = document.getElementById('copy-code-btn');
 const downloadSpecBtn = document.getElementById('download-spec-btn');
@@ -56,24 +57,29 @@ function setState(state) {
   stopBtn.classList.add('hidden');
   pauseBtn.classList.add('hidden');
   newBtn.classList.add('hidden');
+  controlsRow.classList.add('hidden');
   footerEdit.classList.add('hidden');
 
   if (state === 'idle') {
     statusDot.className = 'dot';
     statusText.textContent = 'Ready';
+    controlsRow.classList.remove('hidden');
     startBtn.classList.remove('hidden');
     startBtn.disabled = false;
   } else if (state === 'recording') {
     statusDot.className = 'dot dot-green pulse';
     statusText.textContent = 'Recording...';
+    controlsRow.classList.remove('hidden');
     stopBtn.classList.remove('hidden');
     stopBtn.disabled = (capturedCount === 0);
+    stopBtn.textContent = 'Stop Recording';
     pauseBtn.classList.remove('hidden');
     pauseBtn.textContent = 'Pause';
     newBtn.classList.remove('hidden');
   } else if (state === 'paused') {
     statusDot.className = 'dot dot-yellow';
     statusText.textContent = 'Paused';
+    controlsRow.classList.remove('hidden');
     stopBtn.classList.remove('hidden');
     pauseBtn.classList.remove('hidden');
     pauseBtn.textContent = 'Resume';
@@ -81,6 +87,7 @@ function setState(state) {
   } else if (state === 'stopped') {
     statusDot.className = 'dot dot-red';
     statusText.textContent = 'Stopped';
+    // controlsRow hidden — New is in the status row, Copy/Download in footer
     newBtn.classList.remove('hidden');
     footerEdit.classList.remove('hidden');
   }
@@ -122,7 +129,7 @@ function appendAction(action) {
   li.innerHTML =
     '<span class="action-icon">' + (ACTION_ICONS[action.type] || '?') + '</span>' +
     '<div class="action-info">' +
-      '<span class="action-text">' + escapeHtml(humanText) + '</span>' +
+      '<span class="action-text" title="' + escapeHtml(humanText) + '">' + escapeHtml(humanText) + '</span>' +
       detailsHtml +
     '</div>' +
     '<span class="action-elapsed">' + formatTime(action.elapsed) + '</span>';
@@ -222,7 +229,10 @@ function createStepElement(text, time, index) {
   textSpan.className = 'step-text';
   textSpan.contentEditable = 'true';
   textSpan.textContent = text;
+  textSpan.title = text;  // hover to read full text when clamped
   textSpan.addEventListener('mousedown', (e) => e.stopPropagation());
+  // Keep tooltip in sync when user edits the step text
+  textSpan.addEventListener('input', () => { textSpan.title = textSpan.textContent; });
 
   const timeSpan = document.createElement('span');
   timeSpan.className = 'step-time';
@@ -411,6 +421,8 @@ function switchTab(target) {
   if (btn) btn.classList.add('active');
   tabTimeline.classList.toggle('active', target === 'timeline');
   tabTestSteps.classList.toggle('active', target === 'test-steps');
+  // Reset Edits button only visible on the Step editor tab
+  resetBtn.classList.toggle('hidden', target !== 'test-steps');
 }
 
 tabsNav.addEventListener('click', (e) => {

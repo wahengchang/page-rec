@@ -12,18 +12,19 @@
       <span id="status-dot" class="dot"></span>
       <span id="status-text">Ready</span>
       <span id="action-count">(0 actions)</span>
+      <button id="new-btn" class="btn-new hidden">▶ New Record</button>
     </div>
     <div id="controls-row">
       <button id="start-btn" class="btn-start">Start recording</button>
       <button id="stop-btn" class="btn-stop hidden">Stop Recording</button>
       <button id="pause-btn" class="btn-pause hidden">Pause</button>
-      <button id="new-btn" class="btn-new hidden">↺ New</button>
     </div>
   </header>
 
   <nav id="tabs" class="hidden">
     <button class="tab active" data-tab="timeline">Timeline</button>
     <button class="tab" data-tab="test-steps">Step editor</button>
+    <button id="reset-btn" class="tab-action hidden" title="Undo edits and restore original steps">↺ Reset Edits</button>
   </nav>
 
   <main id="tab-timeline" class="tab-content active">
@@ -32,16 +33,13 @@
   </main>
 
   <main id="tab-test-steps" class="tab-content">
-    <div id="steps-toolbar">
-      <button id="reset-btn" title="Reset to original">↺ Reset</button>
-    </div>
     <ol id="steps-list"></ol>
   </main>
 
   <footer id="footer-edit" class="hidden">
     <div class="footer-row">
       <button id="copy-code-btn" class="btn-primary">Copy Code</button>
-      <button id="download-spec-btn" class="btn-ghost">Download .spec.js</button>
+      <button id="download-spec-btn" class="btn-icon" title="Download Playwright .spec.js file" aria-label="Download .spec.js">⬇ .spec.js</button>
     </div>
   </footer>
 

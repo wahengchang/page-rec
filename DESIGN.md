@@ -1,173 +1,72 @@
-1. Design Vision
+# Page Rec: Design Specification (SSOT)
+**Version:** 3.0 (The Linked Node Integration)
+**Context:** Chrome Extension / Developer Tool
 
-Page Rec is an IDE-Grade Developer Tool (e.g., Chrome Extension context). The aesthetic must transition from a "Generic Web App" to a "High-Density Technical Workspace." It prioritizes information throughput, precision, clear state communication, and dark-mode compatibility.
+---
 
-2. Core Layout Architecture
+## 1. Design Vision
+Page Rec is an IDE-Grade Developer Tool. The UI itself serves as a literal visualization of the brand metaphor: mapping user flows (nodes) into output code (terminal). It prioritizes information throughput, precision, clear state communication, and dark-mode compatibility.
 
+## 2. Core Layout Architecture
 To maximize workspace vertical real estate, the UI follows a "Flattened Hierarchy":
-
-Status Bar (Top): Global status and Global actions (New Record).
-
-Tab Bar: View switching (Timeline vs. Step Editor) and Contextual actions (Reset).
-
-Workspace (Center): The primary scrollable list of recorded steps.
-
-Export Bar (Bottom): Pinned actions for output (Copy/Download).
-
-3. Visual Language & Tokens
-
-A. Typography (Optimized for Legibility)
-
-UI Interface: Inter, system-ui, sans-serif (13px) - Bumped from 12px for accessibility.
-
-Data/Selectors: JetBrains Mono, Roboto Mono, or monospace (12px) - Critical for technical strings.
-
-Weight: 500/Medium for actions (Clicked, Typed) and UI labels. 400/Regular for data strings.
-
-B. Color Logic (Light & Dark Mode)
-
-Tokens must be implemented as CSS variables to support system theme preferences.
-
-Element
-
-Light Mode
-
-Dark Mode
-
-Usage
-
-App Background
-
-#FFFFFF
-
-#0F172A (Slate 900)
-
-Main workspace area
-
-Surface (Header/Tabs)
-
-#F8FAFC (Slate 50)
-
-#1E293B (Slate 800)
-
-Differentiates control areas
-
-Text Primary
-
-#0F172A
-
-#F8FAFC
-
-Standard UI text
-
-Text Secondary
-
-#64748B
-
-#94A3B8
-
-Timestamps, secondary labels
-
-Primary (Indigo)
-
-#4F46E5
-
-#6366F1
-
-Primary CTA, Active Tabs, "Click" actions
-
-Record/Stop (Red)
-
-#EF4444
-
-#F87171
-
-Status indicator, Destructive actions
-
-Success (Emerald)
-
-#10B981
-
-#34D399
-
-"New Record", "Mapped" actions
-
-Input (Amber)
-
-#D97706 (Darker)
-
-#FBBF24
-
-"Typed" actions (Adjusted for contrast)
-
-Hairline Border
-
-#E2E8F0
-
-#334155
-
-Dividers, Split buttons
-
-Hover State
-
-#F1F5F9
-
-#1E293B
-
-List item row hover
-
-C. Geometry & Density
-
-Corner Radius: Strict 4px maximum for buttons; 0px for all container edges/panels.
-
-Density: High. Padding inside list items should be compressed (6px - 8px vertical, 12px horizontal).
-
-4. Component Requirements
-
-4.1 Global Status Bar (The "Header")
-
-Layout: Flex row, justify-content: space-between, align-items: center.
-
-Left: 🔴 Stopped (or 🟢 Recording) status pill.
-
-Right: (Count) actions text + [▶ New Record] button.
-
-Style: [▶ New Record] must be a solid, high-contrast button to ensure discoverability.
-
-4.2 The Tab System
-
-Layout: Flat tabs. Active state uses a 2px Indigo bottom-border. Unselected tabs are muted (Text Secondary).
-
-Contextual Trigger: The ↺ Reset Edits button only appears when "Step Editor" is active. Positioned flush-right.
-
-4.3 The List Item (Technical Density)
-
-Constraint: Max 2 lines per step to maintain scannability.
-
-Typography: The action (e.g., "Clicked") is sans-serif. The target string (e.g., <button#submit>) must be monospace.
-
-Truncation: Use text-overflow: ellipsis on DOM selector strings.
-
-Interactions: * Row must have a subtle background color change on hover.
-
-Truncated text must show full string natively via title attribute or a custom tooltip.
-
-Iconography: Prepend actions with small, 14px icons (Mouse pointer for Clicked, Keyboard for Typed) to aid visual scanning.
-
-4.4 The Slim Footer (Export Bar)
-
-Layout: Split-button bar, attached flush to the bottom. Height should be slim (approx 36px).
-
-Split: * Primary (85% width): 📋 Copy Code
-
-Secondary (15% width): ⬇ (Download icon)
-
-Divider: Must feature a 1px solid border between the two button zones to clarify they are distinct hit areas.
-
-5. Workflow States
-
-Ready: Large "Start Recording" empty-state in the center screen.
-
-Recording: Header shows "Recording...", Workspace populates live, Footer is hidden.
-
-Reviewing: Header shows "Stopped", Workspace is full, Footer is visible.
+* **Status Bar (Top):** Global status and Global actions (New Record).
+* **Tab Bar:** View switching (Timeline vs. Step Editor) and Contextual actions (Reset).
+* **Workspace (Center):** A vertical, node-based timeline of recorded steps.
+* **Export Bar (Bottom):** Pinned actions for output (Copy/Download).
+
+## 3. Brand Identity & UI DNA (The Linked Node)
+The brand identity and the UI structure are identical.
+* **Concept:** Emphasizes relationship and flow mapping.
+* **Visual Metaphor:** Geometric circles (nodes) connected by a dashed grey line, terminating in a code prompt.
+* **UI Application:** The main workspace is not a list of text; it is a visual flow of nodes connected by a dashed track, matching the logo exactly.
+
+## 4. Visual Language & Tokens
+
+### A. Typography & Data
+* **UI Interface:** `Inter`, `system-ui`, `sans-serif` (13px).
+* **Data/Selectors:** `JetBrains Mono`, `Roboto Mono`, or `monospace` (12px).
+* **The Terminal Prompt:** All DOM selectors and raw data outputs must be prefixed with `> ` (e.g., `> <button#submit>`) to reinforce the terminal metaphor.
+* **Weight:** 500/Medium for actions and UI labels. 400/Regular for data strings.
+
+### B. Color Logic (Light & Dark Mode)
+*Tokens mapped as CSS variables.*
+
+| Element | Light Mode | Dark Mode | Usage |
+| :--- | :--- | :--- | :--- |
+| **App Background** | `#FFFFFF` | `#0F172A` | Main workspace area |
+| **Surface (Tabs)**| `#F8FAFC` | `#1E293B` | Differentiates control areas |
+| **Text Primary** | `#0F172A` | `#F8FAFC` | Standard UI text |
+| **Text Secondary** | `#64748B` | `#94A3B8` | Timestamps, secondary labels |
+| **Primary (Indigo)** | `#4F46E5` | `#6366F1` | "Click" node color, Active Tabs |
+| **Record (Red)** | `#EF4444` | `#F87171` | Status indicator, Active recording node |
+| **Success (Emerald)**| `#10B981` | `#34D399` | "New Record", "Mapped" node color |
+| **Input (Amber)** | `#D97706` | `#FBBF24` | "Typed" node color |
+| **Flow Line (Border)**| `#E2E8F0` | `#334155` | Vertical dashed timeline track |
+
+### C. Geometry, Iconography & Density
+* **Corner Radius:** Strict 4px maximum for UI buttons; 100% (circular) for Timeline Nodes.
+* **Iconography (Strict Monoline):** All icons (Copy, Download, Trash, Play) must be constructed with a uniform, monoline stroke (e.g., 1.5px or 2px) to perfectly match the logo's geometry. No filled icons permitted.
+* **Density:** High. Node vertical spacing should be tight (approx 8px padding).
+
+## 5. Component Requirements
+
+### 5.1 Global Status Bar
+* **Left:** 🔴 Stopped (or 🟢 Recording) status pill.
+* **Right:** `(Count) actions` text + `[▶ New Record]` button.
+
+### 5.2 The Node Timeline (The Workspace)
+* **The Track:** A vertical dashed line (`border-left: 2px dashed var(--flow-line)`) runs the entire height of the left gutter.
+* **The Nodes:** Each recorded action places a geometric circle (node) directly on top of the dashed track.
+* **Node Color-Coding:** * `Click` = Indigo Node.
+    * `Type` = Amber Node.
+    * `Active/Recording` = Red Node.
+* **Action Block:** Positioned to the right of the node. Max 2 lines. Line 1: Action (Sans-serif). Line 2: Target string (Monospace, prefixed with `>_`).
+
+### 5.3 The Slim Footer (Export Bar)
+* **Layout:** Split-button bar, attached flush to the bottom (approx 36px height).
+* **Split:** Primary (85% width): `📋 Copy Code` | Secondary (15% width): `⬇` (Download icon)
+
+## 6. Workflow States
+* **Ready (Empty State):** Emphasizes the IDE feel. Shows a blinking terminal cursor in the center of the screen: `> Waiting for recording to start..._`
+* **Recording:** The vertical dashed track appears. New nodes animate downwards onto the track in real-time.
+* **Reviewing:** Recording stops, flow line solidifies, Footer appears for export.

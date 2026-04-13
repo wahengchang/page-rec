@@ -1,5 +1,7 @@
 # Page Rec
 
+![Page Rec](docs/assets/hero.png)
+
 Record user interactions on any web page in Chrome, edit the captured steps, and export as Playwright test code — all inside the browser. Zero network, zero CLI, zero build step for users.
 
 ## Install

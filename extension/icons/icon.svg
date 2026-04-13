@@ -1,13 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="6 2 120 120" width="128" height="128">
-  <!-- Page shape (rounded white rectangle with folded corner) -->
-  <rect x="20" y="8" width="88" height="112" rx="8" ry="8" fill="#f8fafc" stroke="#334155" stroke-width="4"/>
-  <!-- Fold triangle -->
-  <path d="M76 8 L76 32 L108 32" fill="#e2e8f0" stroke="#334155" stroke-width="3" stroke-linejoin="round"/>
-  <!-- Text lines on page -->
-  <rect x="36" y="48" width="40" height="4" rx="2" fill="#94a3b8"/>
-  <rect x="36" y="60" width="56" height="4" rx="2" fill="#94a3b8"/>
-  <rect x="36" y="72" width="48" height="4" rx="2" fill="#94a3b8"/>
-  <!-- Red record dot (bottom-right, overlapping the page) -->
-  <circle cx="92" cy="96" r="22" fill="#ef4444"/>
-  <circle cx="92" cy="96" r="10" fill="#ffffff"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <!-- Page Rec toolbar mark — brand tokens from DESIGN.md §4B -->
+  <!-- Outer indigo ring (--color-primary light: #4F46E5) -->
+  <circle cx="64" cy="64" r="52" fill="none" stroke="#4F46E5" stroke-width="14"/>
+  <!-- Record red center dot (--color-record: #EF4444) -->
+  <circle cx="64" cy="64" r="26" fill="#EF4444"/>
 </svg>

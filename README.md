@@ -22,13 +22,18 @@ Requires Google Chrome 114 or later (Side Panel API).
 
 ## Use
 
-1. Click the **Page Rec** icon in the Chrome toolbar. The Side Panel opens.
+1. Click the **Page Rec** icon in the Chrome toolbar. The Side Panel opens on a terminal-style empty state: `> Waiting for recording to start..._`
 2. Navigate to any `https://` page you want to capture.
 3. Click **Start recording**. The status dot turns green and pulses.
-4. Interact with the page normally — click, type, scroll, navigate. Each event shows up in the **Timeline** live.
-5. Click **Stop Recording** when done.
-6. Use the **Step editor** tab to polish: drag to reorder, click to edit text, delete unwanted steps, or add free-form notes between steps.
+4. Interact with the page normally — click, type, scroll, navigate. Each event lands as a color-coded **node** on the **Timeline**'s dashed vertical track: indigo for clicks, amber for typing, emerald for navigation.
+5. Click **Stop Recording** when done. The dashed flow line solidifies to signal review mode.
+6. Switch to the **Step editor** tab to polish: drag nodes to reorder, click the action line or the `>_ `-prefixed target line to edit in place, delete unwanted steps, or add free-form notes between steps. Hit **↺ Reset Edits** to restore the originals.
 7. Click **Copy Code** to put the Playwright `.spec.js` on your clipboard, or **⬇ .spec.js** to download it as a file.
+
+**Notes:**
+- The Side Panel follows the active tab — keep Page Rec open alongside the page you're recording.
+- Password inputs are captured as `<password>` and the exported spec leaves a `// TODO: fill in real password` line, never the raw value.
+- Full-page navigations are tracked automatically; the recording survives clicking links and form submits.
 
 ### Running the exported test
 

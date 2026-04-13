@@ -13,6 +13,17 @@
 | `extension/export.js` | Playwright `.spec.js` generator (pure string construction). **Authoritative** — `src/export.js` is a stale fossil |
 | `extension/icons/` | 16/48/128 PNGs + source SVG |
 
+## UI model (Linked Node, v3.0)
+
+`DESIGN.md` is the visual SSOT. Summary for contributors:
+
+- **Timeline + Step editor rows** are both `<li class="node-item">`. They render on a shared dashed vertical track (`border-left: 2px dashed var(--flow-line)` in the left gutter).
+- **Node dot** (`.node-dot`) is a circular colored marker sitting on the track. Color is driven by `action.type` via `nodeDotClassFor()`: click=indigo, input=amber, navigate=emerald, scroll=slate, submit=indigo.
+- **Target line** (`<code class="node-target">`) shows selectors/data in monospace. The `>_ ` prefix is applied by CSS `::before` — never hardcoded in JS or HTML.
+- **Empty state** is a terminal prompt (`> Waiting for recording to start..._`) with a blinking cursor, rendered only in the `idle` state.
+- **Flow line solidification**: on `stopped`, `sidepanel.js` toggles `document.body.classList.add('flow-solid')` so the dashed track becomes solid — a visual cue that capture has ended and the timeline is now a reviewable artifact.
+- **Footer** is a split-button bar that only appears in `stopped`: **Copy Code** (85% width) + **⬇ .spec.js** icon button (monoline SVG).
+
 ## Message protocol
 
 All cross-context messages use `{ type, data }` via `chrome.runtime.sendMessage`.
@@ -24,7 +35,7 @@ All cross-context messages use `{ type, data }` via `chrome.runtime.sendMessage`
 | `action-log` | background → sidepanel | Relay event to UI for live display |
 | `save` | sidepanel → background | Persist to `chrome.storage.local` (no auto-download — user downloads explicitly) |
 | `save-complete` | background → sidepanel | Signal save result (error or success) |
-| `discard` | sidepanel → background | Clear session without saving (used by **↺ New Record**) |
+| `discard` | sidepanel → background | Clear session without saving (used by **▶ New Record** when pressed mid-recording) |
 
 ## Storage model
 
@@ -60,13 +71,13 @@ SPA navigation (`history.pushState`) is handled inside `content.js` via monkey-p
          │                 ▼
    idle ─┤            stopped ──▶ (tabs + footer visible, user exports)
          │                 │
-         └── ◀── New Record ┘
+         └── ◀── ▶ New Record ┘
 ```
 
-- **idle**: Start button visible, empty state text; no tabs, no footer.
-- **recording**: Stop + Pause + New Record in header, live Timeline, no footer.
-- **paused**: Resume + Stop + New Record; `action-log` messages ignored until resume.
-- **stopped**: Step editor populated, Copy Code + ⬇ .spec.js in footer, New Record in header.
+- **idle**: **Start recording** button visible, terminal-prompt empty state (`> Waiting for recording to start..._`); no tabs, no footer.
+- **recording**: **Stop Recording** + **Pause** + **▶ New Record** in header, live Timeline with dashed flow track and color-coded nodes, no footer.
+- **paused**: **Resume** + **Stop Recording** + **▶ New Record**; `action-log` messages ignored until resume.
+- **stopped**: Body gets the `flow-solid` class (dashed track solidifies), Step editor populated, **Copy Code** + **⬇ .spec.js** in footer, **▶ New Record** in header.
 
 ## Permissions (manifest.json)
 
@@ -87,9 +98,23 @@ SPA navigation (`history.pushState`) is handled inside `content.js` via monkey-p
 window.generateTest({ name, timestamp, actions }) → string
 ```
 
-Maps action types to Playwright calls (`page.click`, `page.fill`, `page.goto`, `window.scrollTo`), with password masking (`***` → `// TODO: fill in real password`) and single-quote escaping.
+Maps action types to Playwright calls (`page.click`, `page.fill`, `page.goto`, `window.scrollTo`), with password masking (`***` → `// TODO: fill in real password`) and single-quote escaping. Locator preference order: `data-testid` → `#id` → `[name=…]` → `[aria-label=…]` → `tagName.firstClass` (when the recorded selector is a bare `text=` fallback and meta has a class) → the recorded selector as-is. Prefer-the-best locator logic lives in `bestLocator()`.
 
-`src/export.js` is a historical copy from the pre-standalone era. They were byte-compatible at port time but have since diverged. Do not sync — `src/` will be deleted when the legacy CLI is rebuilt.
+Example output (header + two captured actions):
+
+```js
+import { test, expect } from '@playwright/test';
+
+test.describe('example-com-1712826000', () => {
+  test('recorded actions', async ({ page }) => {
+    await page.goto('https://example.com/', { waitUntil: 'domcontentloaded' });
+    await page.click('[data-testid="signup"]');
+    await page.fill('#email', 'alice@example.com');
+  });
+});
+```
+
+`src/export.js` is a historical copy from the pre-standalone era. At present the two files are still semantically equivalent (the extension copy is wrapped in an IIFE that exposes `window.generateTest`). Behavior changes must be mirrored across both until `src/` is deleted alongside the legacy CLI rebuild.
 
 ## Future: AI-agent CLI rebuild
 

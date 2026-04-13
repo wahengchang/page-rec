@@ -110,6 +110,27 @@ function formatTime(ms) {
   return ms < 1000 ? ms + 'ms' : (ms / 1000).toFixed(1) + 's';
 }
 
+// Wrap leading verb in a colored span and the trailing target (selector/URL/
+// element description) in a monospace <code class="target"> per DESIGN.md SSOT.
+// Clicked → indigo, Typed → amber, Navigated → emerald.
+const VERB_CLASSES = [
+  { prefix: 'Clicked',   cls: 'verb-click' },
+  { prefix: 'Typed',     cls: 'verb-type'  },
+  { prefix: 'Navigated', cls: 'verb-nav'   },
+  { prefix: 'Submitted', cls: 'verb-click' },
+  { prefix: 'Scrolled',  cls: 'verb-scroll'},
+];
+function wrapVerbHtml(text) {
+  for (const { prefix, cls } of VERB_CLASSES) {
+    if (text.startsWith(prefix)) {
+      const rest = text.slice(prefix.length).replace(/^\s+/, '');
+      return '<span class="verb ' + cls + '">' + escapeHtml(prefix) + '</span>' +
+             (rest ? '<code class="target">' + escapeHtml(rest) + '</code>' : '');
+    }
+  }
+  return escapeHtml(text);
+}
+
 // ─── Timeline entries (human-readable) ───────────────────────────────────────
 
 function appendAction(action) {
@@ -126,10 +147,11 @@ function appendAction(action) {
     ? '<details class="action-details"><summary>Details</summary><code>' + escapeHtml(rawSelector) + '</code></details>'
     : '';
 
+  li.title = humanText;  // native tooltip shows full text on hover
   li.innerHTML =
     '<span class="action-icon">' + (ACTION_ICONS[action.type] || '?') + '</span>' +
     '<div class="action-info">' +
-      '<span class="action-text" title="' + escapeHtml(humanText) + '">' + escapeHtml(humanText) + '</span>' +
+      '<span class="action-text">' + wrapVerbHtml(humanText) + '</span>' +
       detailsHtml +
     '</div>' +
     '<span class="action-elapsed">' + formatTime(action.elapsed) + '</span>';
@@ -228,11 +250,16 @@ function createStepElement(text, time, index) {
   const textSpan = document.createElement('span');
   textSpan.className = 'step-text';
   textSpan.contentEditable = 'true';
-  textSpan.textContent = text;
+  textSpan.innerHTML = wrapVerbHtml(text);  // colored verb, plain rest
   textSpan.title = text;  // hover to read full text when clamped
+  li.title = text;        // also on the <li> per SSOT
   textSpan.addEventListener('mousedown', (e) => e.stopPropagation());
   // Keep tooltip in sync when user edits the step text
-  textSpan.addEventListener('input', () => { textSpan.title = textSpan.textContent; });
+  textSpan.addEventListener('input', () => {
+    const current = textSpan.textContent;
+    textSpan.title = current;
+    li.title = current;
+  });
 
   const timeSpan = document.createElement('span');
   timeSpan.className = 'step-time';

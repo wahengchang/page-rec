@@ -518,7 +518,7 @@ newBtn.addEventListener('click', async () => {
     if (emptyMsg) emptyMsg.style.display = '';
     currentSessionName = sessionName;
     setState('recording');
-    await chrome.runtime.sendMessage({ type: 'start-recording', data: { tabId: tab.id, sessionName } });
+    await chrome.runtime.sendMessage({ type: 'start-recording', data: { tabId: tab.id, sessionName, url: tab.url } });
   } catch (err) {
     console.error('[rec panel] start failed:', err);
     statusText.textContent = 'Error: ' + err.message;
@@ -549,7 +549,7 @@ startBtn.addEventListener('click', async () => {
     if (emptyMsg) emptyMsg.style.display = '';
     currentSessionName = sessionName;
     setState('recording');
-    await chrome.runtime.sendMessage({ type: 'start-recording', data: { tabId: tab.id, sessionName } });
+    await chrome.runtime.sendMessage({ type: 'start-recording', data: { tabId: tab.id, sessionName, url: tab.url } });
   } catch (err) {
     console.error('[rec panel] start failed:', err);
     statusText.textContent = 'Error: ' + err.message;

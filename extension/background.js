@@ -54,7 +54,7 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo) => {
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   // ── Start recording from side panel ──
   if (msg.type === 'start-recording') {
-    const { tabId, sessionName } = msg.data;
+    const { tabId, sessionName, url } = msg.data;
     (async () => {
       try {
         // D-14: Single-tab guard — ignore if another recording session is active
@@ -63,14 +63,24 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           chrome.runtime.sendMessage({ type: 'save-complete', error: 'Another tab is already recording' }).catch(() => {});
           return;
         }
+        // Seed with an initial "navigate" action so the Timeline starts at the
+        // current page URL — makes elapsed times relative to recording start
+        // and ensures the exported Playwright spec begins with page.goto().
+        const initialNavigate = url
+          ? [{ type: 'navigate', selector: '', url, elapsed: 0 }]
+          : [];
         // Pitfall 3: write session state BEFORE async injection so content.js
         // can read config.startedAt on first load (elapsed-time baseline)
         await chrome.storage.session.set({
           activeTabId: tabId,
-          actions: [],
+          actions: initialNavigate,
           sessionName,
           config: { startedAt: Date.now() }
         });
+        // Relay the initial navigate to the side panel so it shows up in the Timeline
+        if (initialNavigate.length) {
+          chrome.runtime.sendMessage({ type: 'action-log', data: initialNavigate[0] }).catch(() => {});
+        }
         // D-23: Programmatic content script injection (not declarative)
         await chrome.scripting.executeScript({ target: { tabId }, files: ['content.js'] });
         console.log('[rec] Recording started on tab', tabId, 'session', sessionName);

@@ -29,7 +29,9 @@
 
   <main id="tab-timeline" class="tab-content active">
     <ul id="action-list" aria-label="Captured actions"></ul>
-    <p id="empty-msg">Click 'Start recording' and interact with the page. We'll capture your clicks, typing, and navigation.</p>
+    <p id="empty-msg" class="empty-terminal">
+      <span class="prompt-arrow">&gt;</span><span class="prompt-text">Waiting for recording to start...</span><span class="cursor-blink">_</span>
+    </p>
   </main>
 
   <main id="tab-test-steps" class="tab-content">
@@ -39,7 +41,7 @@
   <footer id="footer-edit" class="hidden">
     <div class="footer-row">
       <button id="copy-code-btn" class="btn-primary">Copy Code</button>
-      <button id="download-spec-btn" class="btn-icon" title="Download Playwright .spec.js file" aria-label="Download .spec.js">⬇ .spec.js</button>
+      <button id="download-spec-btn" class="btn-icon" title="Download Playwright .spec.js file" aria-label="Download .spec.js"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v12m0 0l-5-5m5 5l5-5M4 20h16"/></svg>.spec.js</button>
     </div>
   </footer>
 

@@ -232,6 +232,20 @@ body {
 /* Step editor needs extra left padding so the drag handle has room */
 #steps-list { padding-left: 52px; }
 
+/* Idle state: collapse the empty list so the dashed track disappears and the
+   terminal empty-state is the only thing in view (DESIGN.md §6 — the track
+   only appears once recording starts). */
+#action-list:empty,
+#steps-list:empty {
+  display: none;
+}
+/* When the list is empty, vertically center the terminal prompt in the panel. */
+#tab-timeline.active:has(#action-list:empty) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 /* When recording has stopped, solidify the line */
 body.flow-solid #action-list,
 body.flow-solid #steps-list {
@@ -357,26 +371,134 @@ body.flow-solid #steps-list {
 }
 .node-delete:hover { color: var(--color-record); background: var(--bg-hover); }
 
-/* ─── Terminal empty state (replaces the plain #empty-msg block) ──────────── */
+/* ─── Terminal empty state (idle-only guide) ──────────────────────────────── */
 .empty-terminal {
-  padding: 48px 20px;
+  width: 100%;
+  max-width: 320px;
+  margin: 0 auto;
+  padding: 24px 20px;
   color: var(--text-secondary);
   font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.5;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+/* (1) CTA pointing at the Start button in the header */
+.empty-terminal .empty-cta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  color: var(--color-primary);
+  font-family: var(--font-ui);
   font-size: 13px;
-  text-align: center;
-  line-height: 1.6;
+  font-weight: 500;
+}
+.empty-terminal .cta-arrow {
+  font-size: 22px;
+  line-height: 1;
+  animation: cta-bounce 1.6s ease-in-out infinite;
+}
+.empty-terminal .cta-text b {
+  color: var(--color-success);   /* match the actual Start button color */
+  font-weight: 600;
+}
+@keyframes cta-bounce {
+  0%, 100% { transform: translateY(0);   opacity: 0.85; }
+  50%      { transform: translateY(-6px); opacity: 1; }
+}
+
+/* (2) Terminal prompt line */
+.empty-terminal .empty-prompt {
+  text-align: left;
 }
 .empty-terminal .prompt-arrow {
   color: var(--color-success);
   font-weight: 600;
   margin-right: 6px;
 }
+.empty-terminal .prompt-cmd {
+  color: var(--text-primary);
+}
+
+/* (3) One-line description */
+.empty-terminal .empty-desc {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  text-align: left;
+  color: var(--text-secondary);
+}
+.empty-terminal .empty-desc code {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 1px 5px;
+  background: var(--bg-hover);
+  color: var(--text-primary);
+  border-radius: 3px;
+}
+
+/* (4) Three-step workflow — numbers mirror DESIGN.md verb-color tokens */
+.empty-terminal .empty-steps {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 0;
+  margin: 0;
+}
+.empty-terminal .empty-steps li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-primary);
+}
+.empty-terminal .step-num {
+  flex: 0 0 auto;
+  min-width: 22px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-weight: 600;
+  font-size: 11px;
+  text-align: center;
+  letter-spacing: 0.5px;
+}
+.empty-terminal .step-num-1 { color: var(--color-success); background: rgba(16,185,129,0.12); }  /* Start = emerald */
+.empty-terminal .step-num-2 { color: var(--color-input);   background: rgba(217,119,6,0.14); }   /* Interact = amber */
+.empty-terminal .step-num-3 { color: var(--color-primary); background: rgba(79,70,229,0.12); }   /* Export = indigo */
+.empty-terminal .step-label {
+  color: var(--text-secondary);
+}
+
+/* (5) Blinking cursor line to keep the terminal feel alive */
+.empty-terminal .empty-cursor {
+  text-align: left;
+  margin-top: -4px;
+}
 .empty-terminal .cursor-blink {
   display: inline-block;
   animation: blink 1s step-end infinite;
   margin-left: 1px;
+  color: var(--text-primary);
 }
 @keyframes blink { 50% { opacity: 0; } }
+
+/* Dark-mode badge tints (tokens shift in dark; tweak bg alpha for legibility) */
+@media (prefers-color-scheme: dark) {
+  .empty-terminal .step-num-1 { background: rgba(52,211,153,0.16); }
+  .empty-terminal .step-num-2 { background: rgba(251,191,36,0.16); }
+  .empty-terminal .step-num-3 { background: rgba(99,102,241,0.22); }
+}
+
+/* Respect reduced-motion preference */
+@media (prefers-reduced-motion: reduce) {
+  .empty-terminal .cta-arrow,
+  .empty-terminal .cursor-blink { animation: none; }
+}
 
 /* ─── Insert zone (+ Add note) ────────────────────────────────────────────── */
 .step-insert-zone {

@@ -29,9 +29,31 @@
 
   <main id="tab-timeline" class="tab-content active">
     <ul id="action-list" aria-label="Captured actions"></ul>
-    <p id="empty-msg" class="empty-terminal">
-      <span class="prompt-arrow">&gt;</span><span class="prompt-text">Waiting for recording to start...</span><span class="cursor-blink">_</span>
-    </p>
+    <div id="empty-msg" class="empty-terminal" role="status">
+      <div class="empty-cta" aria-hidden="true">
+        <span class="cta-arrow">↑</span>
+        <span class="cta-text">Click <b>Start recording</b> to begin</span>
+      </div>
+
+      <p class="empty-prompt">
+        <span class="prompt-arrow">&gt;</span><span class="prompt-cmd">page-rec --help</span>
+      </p>
+
+      <p class="empty-desc">
+        Capture clicks, typing &amp; navigation on any
+        <code>https://</code> page — export as a runnable Playwright test.
+      </p>
+
+      <ol class="empty-steps" aria-label="Three-step workflow">
+        <li><span class="step-num step-num-1">01</span><span class="step-label">Start recording</span></li>
+        <li><span class="step-num step-num-2">02</span><span class="step-label">Interact with the page</span></li>
+        <li><span class="step-num step-num-3">03</span><span class="step-label">Stop → Copy / Download</span></li>
+      </ol>
+
+      <p class="empty-cursor" aria-hidden="true">
+        <span class="prompt-arrow">&gt;</span><span class="cursor-blink">_</span>
+      </p>
+    </div>
   </main>
 
   <main id="tab-test-steps" class="tab-content">
